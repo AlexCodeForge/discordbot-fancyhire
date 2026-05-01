@@ -30,27 +30,45 @@ export function LeadCard({ lead, onClick }: LeadCardProps) {
       {...attributes}
       {...listeners}
       onClick={onClick}
-      className="bg-white rounded-lg shadow-sm p-4 mb-3 cursor-pointer hover:shadow-md transition-shadow border border-gray-200"
+      className="bmw-card cursor-pointer mb-3"
+      onMouseEnter={(e) => {
+        e.currentTarget.style.borderColor = 'var(--bmw-ink)';
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.borderColor = 'var(--bmw-hairline)';
+      }}
     >
       <div className="flex items-start justify-between mb-2">
-        <h3 className="font-semibold text-gray-900">{lead.name}</h3>
+        <h3 className="bmw-title-sm">{lead.name}</h3>
         {lead.source === 'auto' && (
-          <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">Auto</span>
+          <span className="bmw-body-sm" style={{ 
+            fontSize: '12px',
+            backgroundColor: 'var(--bmw-surface-strong)',
+            color: 'var(--bmw-ink)',
+            padding: '4px 8px',
+            borderRadius: '0'
+          }}>Auto</span>
         )}
       </div>
       
-      <div className="text-sm text-gray-600 mb-2">
+      <div className="bmw-body-sm mb-2" style={{ color: 'var(--bmw-body)' }}>
         {lead.discord_tag || lead.contact_discord}
       </div>
       
       {lead.service_interest && (
-        <div className="text-xs text-gray-500 line-clamp-2">
+        <div className="bmw-body-sm line-clamp-2" style={{ 
+          fontSize: '12px',
+          color: 'var(--bmw-muted)'
+        }}>
           {lead.service_interest}
         </div>
       )}
       
       {lead.assigned_to && (
-        <div className="text-xs text-gray-400 mt-2">
+        <div className="bmw-body-sm mt-2" style={{ 
+          fontSize: '12px',
+          color: 'var(--bmw-muted-soft)'
+        }}>
           Asignado: {lead.assigned_to}
         </div>
       )}

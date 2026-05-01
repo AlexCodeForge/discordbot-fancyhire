@@ -5,10 +5,10 @@ import { useAuth } from '../context/AuthContext';
 
 const LEVELS = ['error', 'warning', 'info', 'debug'] as const;
 const LEVEL_COLORS = {
-  error: 'bg-red-100 text-red-800 border-red-200',
-  warning: 'bg-yellow-100 text-yellow-800 border-yellow-200',
-  info: 'bg-blue-100 text-blue-800 border-blue-200',
-  debug: 'bg-gray-100 text-gray-800 border-gray-200'
+  error: { bg: 'var(--bmw-surface-soft)', text: 'var(--bmw-error)', border: 'var(--bmw-error)' },
+  warning: { bg: 'var(--bmw-surface-soft)', text: 'var(--bmw-warning)', border: 'var(--bmw-warning)' },
+  info: { bg: 'var(--bmw-surface-soft)', text: 'var(--bmw-primary)', border: 'var(--bmw-primary)' },
+  debug: { bg: 'var(--bmw-surface-soft)', text: 'var(--bmw-body)', border: 'var(--bmw-hairline-strong)' }
 };
 
 export function Logs() {
@@ -82,24 +82,33 @@ export function Logs() {
   const totalPages = Math.ceil(total / limit);
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      <header className="bg-white shadow-sm border-b border-gray-200 mb-6">
-        <div className="max-w-screen-2xl mx-auto px-6 py-4">
-          <div className="flex justify-between items-center">
+    <div className="min-h-screen" style={{ backgroundColor: 'var(--bmw-surface-soft)' }}>
+      <header className="mb-6" style={{ 
+        backgroundColor: 'var(--bmw-canvas)', 
+        borderBottom: '1px solid var(--bmw-hairline)',
+        height: '64px'
+      }}>
+        <div className="max-w-screen-2xl mx-auto px-6 h-full">
+          <div className="flex justify-between items-center h-full">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">System Logs</h1>
-              <p className="text-gray-600 mt-2">Total: {total} logs</p>
+              <h1 className="bmw-title-md" style={{ fontSize: '24px', lineHeight: '1.25' }}>System Logs</h1>
+              <p className="bmw-body-sm" style={{ color: 'var(--bmw-muted)', marginTop: '4px' }}>Total: {total} logs</p>
             </div>
             <div className="flex gap-3">
               <Link
                 to="/"
-                className="px-6 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 font-medium"
+                className="bmw-btn-secondary inline-flex items-center justify-center"
               >
                 Volver al CRM
               </Link>
               <button
                 onClick={logout}
-                className="px-6 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 font-medium"
+                className="bmw-btn-secondary"
+                style={{ 
+                  backgroundColor: 'transparent',
+                  color: 'var(--bmw-error)',
+                  borderColor: 'var(--bmw-error)'
+                }}
               >
                 Cerrar Sesión
               </button>
@@ -108,26 +117,40 @@ export function Logs() {
         </div>
       </header>
 
-      <div className="max-w-screen-2xl mx-auto px-6 py-6">
+      <div className="max-w-screen-2xl mx-auto px-6" style={{ paddingTop: '24px', paddingBottom: '24px' }}>
 
         {stats && (
           <div className="grid grid-cols-4 gap-4 mb-6">
-            {stats.byLevel.map((stat) => (
-              <div
-                key={stat.level}
-                className={`p-4 rounded-lg border-2 ${LEVEL_COLORS[stat.level as keyof typeof LEVEL_COLORS]}`}
-              >
-                <div className="text-sm font-medium uppercase">{stat.level}</div>
-                <div className="text-2xl font-bold mt-1">{stat.count}</div>
-              </div>
-            ))}
+            {stats.byLevel.map((stat) => {
+              const colors = LEVEL_COLORS[stat.level as keyof typeof LEVEL_COLORS];
+              return (
+                <div
+                  key={stat.level}
+                  className="p-4"
+                  style={{ 
+                    backgroundColor: colors.bg,
+                    border: `2px solid ${colors.border}`,
+                    borderRadius: '0'
+                  }}
+                >
+                  <div className="bmw-label" style={{ color: colors.text }}>{stat.level}</div>
+                  <div style={{ 
+                    fontSize: '32px',
+                    lineHeight: '1.15',
+                    fontWeight: 700,
+                    color: colors.text,
+                    marginTop: '4px'
+                  }}>{stat.count}</div>
+                </div>
+              );
+            })}
           </div>
         )}
 
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
+        <div className="bmw-card mb-6">
           <div className="flex gap-4 items-center">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="bmw-label block mb-1">
                 Filtrar por nivel:
               </label>
               <select
@@ -136,7 +159,8 @@ export function Logs() {
                   setSelectedLevel(e.target.value);
                   setCurrentPage(1);
                 }}
-                className="px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                className="bmw-input"
+                style={{ minWidth: '200px' }}
               >
                 <option value="">Todos</option>
                 {LEVELS.map((level) => (
@@ -149,7 +173,12 @@ export function Logs() {
             <div className="ml-auto">
               <button
                 onClick={handleCleanup}
-                className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
+                className="bmw-btn-secondary"
+                style={{ 
+                  backgroundColor: 'transparent',
+                  color: 'var(--bmw-error)',
+                  borderColor: 'var(--bmw-error)'
+                }}
               >
                 Limpiar Logs Antiguos
               </button>
@@ -159,69 +188,100 @@ export function Logs() {
 
         {loading ? (
           <div className="text-center py-12">
-            <div className="text-gray-600">Cargando logs...</div>
+            <div className="bmw-body-sm" style={{ color: 'var(--bmw-body)' }}>Cargando logs...</div>
           </div>
         ) : (
           <>
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+            <div className="overflow-hidden" style={{ 
+              backgroundColor: 'var(--bmw-canvas)',
+              border: '1px solid var(--bmw-hairline)',
+              borderRadius: '0'
+            }}>
               <div className="overflow-x-auto">
                 <table className="w-full">
-                  <thead className="bg-gray-50 border-b border-gray-200">
+                  <thead style={{ 
+                    backgroundColor: 'var(--bmw-surface-soft)',
+                    borderBottom: '1px solid var(--bmw-hairline)'
+                  }}>
                     <tr>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                      <th className="px-4 py-3 text-left bmw-label">
                         Nivel
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                      <th className="px-4 py-3 text-left bmw-label">
                         Mensaje
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                      <th className="px-4 py-3 text-left bmw-label">
                         Endpoint
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                      <th className="px-4 py-3 text-left bmw-label">
                         Usuario
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                      <th className="px-4 py-3 text-left bmw-label">
                         Fecha
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                      <th className="px-4 py-3 text-left bmw-label">
                         Acciones
                       </th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-200">
-                    {logs.map((log) => (
-                      <tr key={log.id} className="hover:bg-gray-50">
-                        <td className="px-4 py-3">
-                          <span
-                            className={`px-2 py-1 text-xs font-medium rounded ${
-                              LEVEL_COLORS[log.level]
-                            }`}
-                          >
-                            {log.level.toUpperCase()}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-sm text-gray-900 max-w-md truncate">
-                          {log.message}
-                        </td>
-                        <td className="px-4 py-3 text-sm text-gray-600">
-                          {log.method} {log.endpoint || '-'}
-                        </td>
-                        <td className="px-4 py-3 text-sm text-gray-600">
-                          {log.user_id || '-'}
-                        </td>
-                        <td className="px-4 py-3 text-sm text-gray-600">
-                          {formatDate(log.created_at)}
-                        </td>
-                        <td className="px-4 py-3">
-                          <button
-                            onClick={() => setSelectedLog(log)}
-                            className="text-blue-600 hover:text-blue-800 text-sm font-medium"
-                          >
-                            Ver detalles
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
+                  <tbody style={{ borderTop: '1px solid var(--bmw-hairline)' }}>
+                    {logs.map((log) => {
+                      const colors = LEVEL_COLORS[log.level];
+                      return (
+                        <tr 
+                          key={log.id}
+                          style={{ borderBottom: '1px solid var(--bmw-hairline)' }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.backgroundColor = 'var(--bmw-surface-soft)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = 'transparent';
+                          }}
+                        >
+                          <td className="px-4 py-3">
+                            <span
+                              className="bmw-body-sm"
+                              style={{
+                                display: 'inline-block',
+                                padding: '4px 8px',
+                                fontSize: '12px',
+                                fontWeight: 700,
+                                backgroundColor: colors.bg,
+                                color: colors.text,
+                                borderRadius: '0'
+                              }}
+                            >
+                              {log.level.toUpperCase()}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 bmw-body-sm max-w-md truncate">
+                            {log.message}
+                          </td>
+                          <td className="px-4 py-3 bmw-body-sm" style={{ color: 'var(--bmw-body)' }}>
+                            {log.method} {log.endpoint || '-'}
+                          </td>
+                          <td className="px-4 py-3 bmw-body-sm" style={{ color: 'var(--bmw-body)' }}>
+                            {log.user_id || '-'}
+                          </td>
+                          <td className="px-4 py-3 bmw-body-sm" style={{ color: 'var(--bmw-body)' }}>
+                            {formatDate(log.created_at)}
+                          </td>
+                          <td className="px-4 py-3">
+                            <button
+                              onClick={() => setSelectedLog(log)}
+                              className="bmw-btn-text"
+                              style={{ 
+                                color: 'var(--bmw-primary)',
+                                fontSize: '14px',
+                                padding: '0'
+                              }}
+                            >
+                              Ver detalles
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -232,17 +292,19 @@ export function Logs() {
                 <button
                   onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                   disabled={currentPage === 1}
-                  className="px-4 py-2 border border-gray-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                  className="bmw-btn-secondary"
+                  style={{ height: '40px', padding: '8px 24px' }}
                 >
                   Anterior
                 </button>
-                <span className="px-4 py-2 text-gray-700">
+                <span className="bmw-body-sm flex items-center" style={{ padding: '0 16px', color: 'var(--bmw-ink)' }}>
                   Página {currentPage} de {totalPages}
                 </span>
                 <button
                   onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                   disabled={currentPage === totalPages}
-                  className="px-4 py-2 border border-gray-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                  className="bmw-btn-secondary"
+                  style={{ height: '40px', padding: '8px 24px' }}
                 >
                   Siguiente
                 </button>
@@ -253,14 +315,25 @@ export function Logs() {
       </div>
 
       {selectedLog && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-auto">
+        <div className="fixed inset-0 flex items-center justify-center p-4 z-50" style={{ 
+          backgroundColor: 'rgba(0, 0, 0, 0.5)'
+        }}>
+          <div className="max-w-3xl w-full max-h-[90vh] overflow-auto" style={{ 
+            backgroundColor: 'var(--bmw-canvas)',
+            borderRadius: '0',
+            border: '1px solid var(--bmw-hairline)'
+          }}>
             <div className="p-6">
               <div className="flex justify-between items-start mb-4">
-                <h2 className="text-2xl font-bold text-gray-900">Detalle del Log</h2>
+                <h2 style={{ fontSize: '32px', lineHeight: '1.15', fontWeight: 700, color: 'var(--bmw-ink)' }}>Detalle del Log</h2>
                 <button
                   onClick={() => setSelectedLog(null)}
-                  className="text-gray-400 hover:text-gray-600"
+                  style={{ 
+                    background: 'transparent',
+                    border: 'none',
+                    color: 'var(--bmw-muted)',
+                    cursor: 'pointer'
+                  }}
                 >
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -270,12 +343,17 @@ export function Logs() {
 
               <div className="space-y-4">
                 <div>
-                  <label className="text-sm font-medium text-gray-500">Nivel</label>
+                  <label className="bmw-label">Nivel</label>
                   <div className="mt-1">
                     <span
-                      className={`inline-block px-3 py-1 text-sm font-medium rounded ${
-                        LEVEL_COLORS[selectedLog.level]
-                      }`}
+                      className="bmw-body-sm inline-block"
+                      style={{
+                        padding: '4px 12px',
+                        fontWeight: 700,
+                        backgroundColor: LEVEL_COLORS[selectedLog.level].bg,
+                        color: LEVEL_COLORS[selectedLog.level].text,
+                        borderRadius: '0'
+                      }}
                     >
                       {selectedLog.level.toUpperCase()}
                     </span>
@@ -283,41 +361,45 @@ export function Logs() {
                 </div>
 
                 <div>
-                  <label className="text-sm font-medium text-gray-500">Mensaje</label>
-                  <div className="mt-1 text-gray-900">{selectedLog.message}</div>
+                  <label className="bmw-label">Mensaje</label>
+                  <div className="mt-1 bmw-body-sm">{selectedLog.message}</div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="text-sm font-medium text-gray-500">Usuario</label>
-                    <div className="mt-1 text-gray-900">{selectedLog.user_id || '-'}</div>
+                    <label className="bmw-label">Usuario</label>
+                    <div className="mt-1 bmw-body-sm">{selectedLog.user_id || '-'}</div>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-500">IP</label>
-                    <div className="mt-1 text-gray-900">{selectedLog.ip_address || '-'}</div>
+                    <label className="bmw-label">IP</label>
+                    <div className="mt-1 bmw-body-sm">{selectedLog.ip_address || '-'}</div>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="text-sm font-medium text-gray-500">Método</label>
-                    <div className="mt-1 text-gray-900">{selectedLog.method || '-'}</div>
+                    <label className="bmw-label">Método</label>
+                    <div className="mt-1 bmw-body-sm">{selectedLog.method || '-'}</div>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-500">Endpoint</label>
-                    <div className="mt-1 text-gray-900">{selectedLog.endpoint || '-'}</div>
+                    <label className="bmw-label">Endpoint</label>
+                    <div className="mt-1 bmw-body-sm">{selectedLog.endpoint || '-'}</div>
                   </div>
                 </div>
 
                 <div>
-                  <label className="text-sm font-medium text-gray-500">Fecha</label>
-                  <div className="mt-1 text-gray-900">{formatDate(selectedLog.created_at)}</div>
+                  <label className="bmw-label">Fecha</label>
+                  <div className="mt-1 bmw-body-sm">{formatDate(selectedLog.created_at)}</div>
                 </div>
 
                 {selectedLog.context && (
                   <div>
-                    <label className="text-sm font-medium text-gray-500">Contexto</label>
-                    <pre className="mt-1 p-3 bg-gray-50 rounded text-xs overflow-auto">
+                    <label className="bmw-label">Contexto</label>
+                    <pre className="mt-1 p-3 bmw-body-sm overflow-auto" style={{ 
+                      backgroundColor: 'var(--bmw-surface-soft)',
+                      borderRadius: '0',
+                      fontSize: '12px'
+                    }}>
                       {JSON.stringify(selectedLog.context, null, 2)}
                     </pre>
                   </div>
@@ -325,8 +407,12 @@ export function Logs() {
 
                 {selectedLog.stack_trace && (
                   <div>
-                    <label className="text-sm font-medium text-gray-500">Stack Trace</label>
-                    <pre className="mt-1 p-3 bg-gray-50 rounded text-xs overflow-auto">
+                    <label className="bmw-label">Stack Trace</label>
+                    <pre className="mt-1 p-3 bmw-body-sm overflow-auto" style={{ 
+                      backgroundColor: 'var(--bmw-surface-soft)',
+                      borderRadius: '0',
+                      fontSize: '12px'
+                    }}>
                       {selectedLog.stack_trace}
                     </pre>
                   </div>

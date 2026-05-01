@@ -2,12 +2,171 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
-  margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  background-color: #f5f5f5;
+@layer base {
+  :root {
+    --bmw-primary: #1c69d4;
+    --bmw-primary-active: #0653b6;
+    --bmw-primary-disabled: #d6d6d6;
+    --bmw-ink: #262626;
+    --bmw-body: #3c3c3c;
+    --bmw-body-strong: #1a1a1a;
+    --bmw-muted: #6b6b6b;
+    --bmw-muted-soft: #9a9a9a;
+    --bmw-hairline: #e6e6e6;
+    --bmw-hairline-strong: #cccccc;
+    --bmw-canvas: #ffffff;
+    --bmw-surface-soft: #f7f7f7;
+    --bmw-surface-card: #fafafa;
+    --bmw-surface-strong: #ebebeb;
+    --bmw-surface-dark: #1a2129;
+    --bmw-surface-dark-elevated: #262e38;
+    --bmw-on-primary: #ffffff;
+    --bmw-on-dark: #ffffff;
+    --bmw-on-dark-soft: #bbbbbb;
+    --bmw-success: #22c55e;
+    --bmw-warning: #f59e0b;
+    --bmw-error: #dc2626;
+  }
+
+  body {
+    margin: 0;
+    font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    background-color: var(--bmw-canvas);
+    color: var(--bmw-body);
+    font-weight: 300;
+    font-size: 16px;
+    line-height: 1.55;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-weight: 700;
+    color: var(--bmw-ink);
+    letter-spacing: 0;
+  }
+
+  h1 {
+    font-size: 48px;
+    line-height: 1.1;
+  }
+
+  h2 {
+    font-size: 32px;
+    line-height: 1.15;
+  }
+
+  h3 {
+    font-size: 24px;
+    line-height: 1.25;
+  }
+}
+
+@layer utilities {
+  .bmw-btn-primary {
+    background-color: var(--bmw-primary);
+    color: var(--bmw-on-primary);
+    font-weight: 700;
+    font-size: 14px;
+    letter-spacing: 0.5px;
+    padding: 14px 32px;
+    border-radius: 0;
+    height: 48px;
+    transition: background-color 0.2s;
+  }
+
+  .bmw-btn-primary:hover:not(:disabled) {
+    background-color: var(--bmw-primary-active);
+  }
+
+  .bmw-btn-primary:disabled {
+    background-color: var(--bmw-primary-disabled);
+    color: var(--bmw-muted);
+    cursor: not-allowed;
+  }
+
+  .bmw-btn-secondary {
+    background-color: var(--bmw-canvas);
+    color: var(--bmw-ink);
+    font-weight: 700;
+    font-size: 14px;
+    letter-spacing: 0.5px;
+    padding: 13px 31px;
+    border: 1px solid var(--bmw-hairline-strong);
+    border-radius: 0;
+    height: 48px;
+    transition: all 0.2s;
+  }
+
+  .bmw-btn-secondary:hover:not(:disabled) {
+    background-color: var(--bmw-surface-soft);
+  }
+
+  .bmw-btn-secondary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .bmw-btn-text {
+    background-color: transparent;
+    color: var(--bmw-ink);
+    font-weight: 700;
+    font-size: 13px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+  }
+
+  .bmw-input {
+    background-color: var(--bmw-canvas);
+    color: var(--bmw-ink);
+    font-weight: 300;
+    font-size: 16px;
+    padding: 14px 16px;
+    border: 1px solid var(--bmw-hairline);
+    border-radius: 0;
+    height: 48px;
+    transition: border-color 0.2s;
+  }
+
+  .bmw-input:focus {
+    outline: none;
+    border-color: var(--bmw-ink);
+  }
+
+  .bmw-card {
+    background-color: var(--bmw-canvas);
+    border: 1px solid var(--bmw-hairline);
+    border-radius: 0;
+    padding: 24px;
+  }
+
+  .bmw-label {
+    font-weight: 700;
+    font-size: 13px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--bmw-ink);
+    line-height: 1.3;
+  }
+
+  .bmw-body-sm {
+    font-weight: 300;
+    font-size: 14px;
+    line-height: 1.55;
+    color: var(--bmw-body);
+  }
+
+  .bmw-title-sm {
+    font-weight: 700;
+    font-size: 16px;
+    line-height: 1.4;
+    color: var(--bmw-ink);
+  }
+
+  .bmw-title-md {
+    font-weight: 700;
+    font-size: 18px;
+    line-height: 1.4;
+    color: var(--bmw-ink);
+  }
 }

@@ -82,20 +82,24 @@ function App() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="text-xl text-gray-600">Cargando...</div>
+      <div className="flex items-center justify-center h-screen" style={{ backgroundColor: 'var(--bmw-canvas)' }}>
+        <div className="bmw-body-sm" style={{ color: 'var(--bmw-muted)' }}>Cargando...</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      <header className="bg-white shadow-sm border-b border-gray-200">
-        <div className="max-w-screen-2xl mx-auto px-6 py-4">
-          <div className="flex justify-between items-center">
+    <div className="min-h-screen" style={{ backgroundColor: 'var(--bmw-surface-soft)' }}>
+      <header style={{ 
+        backgroundColor: 'var(--bmw-canvas)', 
+        borderBottom: '1px solid var(--bmw-hairline)',
+        height: '64px'
+      }}>
+        <div className="max-w-screen-2xl mx-auto px-6 h-full">
+          <div className="flex justify-between items-center h-full">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">CRM Leads - Kanban Board</h1>
-              <div className="mt-2 text-sm text-gray-600">
+              <h1 className="bmw-title-md" style={{ fontSize: '24px', lineHeight: '1.25' }}>CRM Leads - Kanban Board</h1>
+              <div className="bmw-body-sm" style={{ color: 'var(--bmw-muted)', marginTop: '4px' }}>
                 Total de leads: {leads.length}
               </div>
             </div>
@@ -103,19 +107,24 @@ function App() {
               <StatusPill />
               <Link
                 to="/logs"
-                className="px-6 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 font-medium"
+                className="bmw-btn-secondary inline-flex items-center justify-center"
               >
                 Ver Logs
               </Link>
               <button
                 onClick={() => setShowCreateForm(true)}
-                className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-medium"
+                className="bmw-btn-primary"
               >
                 + Agregar Lead Manual
               </button>
               <button
                 onClick={logout}
-                className="px-6 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 font-medium"
+                className="bmw-btn-secondary"
+                style={{ 
+                  backgroundColor: 'transparent',
+                  color: 'var(--bmw-error)',
+                  borderColor: 'var(--bmw-error)'
+                }}
               >
                 Cerrar Sesión
               </button>
@@ -124,7 +133,7 @@ function App() {
         </div>
       </header>
 
-      <main className="max-w-screen-2xl mx-auto px-6 py-6">
+      <main className="max-w-screen-2xl mx-auto px-6" style={{ paddingTop: '24px', paddingBottom: '24px' }}>
         <DndContext
           sensors={sensors}
           onDragStart={handleDragStart}

@@ -57,7 +57,10 @@ export const StatusModal = ({ onClose }: StatusModalProps) => {
   };
 
   const getStatusColor = (status: 'ok' | 'error') => {
-    return status === 'ok' ? 'text-green-600' : 'text-red-600';
+    if (status === 'ok') {
+      return { color: 'var(--bmw-success)' };
+    }
+    return { color: 'var(--bmw-error)' };
   };
 
   const getStatusIcon = (status: 'ok' | 'error') => {
@@ -65,63 +68,89 @@ export const StatusModal = ({ onClose }: StatusModalProps) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+    <div className="fixed inset-0 flex items-center justify-center z-50" style={{ 
+      backgroundColor: 'rgba(0, 0, 0, 0.5)'
+    }}>
+      <div className="max-w-md w-full mx-4" style={{ 
+        backgroundColor: 'var(--bmw-canvas)',
+        borderRadius: '0',
+        border: '1px solid var(--bmw-hairline)'
+      }}>
         <div className="p-6">
           <div className="flex justify-between items-start mb-6">
-            <h2 className="text-2xl font-bold text-gray-900">Estado del Sistema</h2>
+            <h2 style={{ fontSize: '32px', lineHeight: '1.15', fontWeight: 700, color: 'var(--bmw-ink)' }}>Estado del Sistema</h2>
             <button
               onClick={onClose}
-              className="text-gray-400 hover:text-gray-600 text-2xl"
+              className="bmw-body-sm"
+              style={{ 
+                background: 'transparent',
+                border: 'none',
+                color: 'var(--bmw-muted)',
+                fontSize: '32px',
+                cursor: 'pointer',
+                lineHeight: '1'
+              }}
             >
               ×
             </button>
           </div>
 
           {loading ? (
-            <div className="py-8 text-center text-gray-600">
+            <div className="py-8 text-center bmw-body-sm" style={{ color: 'var(--bmw-body)' }}>
               Verificando sistema...
             </div>
           ) : status ? (
             <div className="space-y-4">
-              <div className="border rounded-lg p-4">
+              <div className="p-4" style={{ 
+                border: '1px solid var(--bmw-hairline)',
+                borderRadius: '0'
+              }}>
                 <div className="flex items-center justify-between mb-2">
-                  <h3 className="font-semibold text-gray-900">API</h3>
-                  <span className={`text-2xl ${getStatusColor(status.api.status)}`}>
+                  <h3 className="bmw-title-sm">API</h3>
+                  <span className="text-2xl" style={getStatusColor(status.api.status)}>
                     {getStatusIcon(status.api.status)}
                   </span>
                 </div>
-                <p className={`text-sm ${getStatusColor(status.api.status)}`}>
+                <p className="bmw-body-sm" style={getStatusColor(status.api.status)}>
                   {status.api.message}
                 </p>
               </div>
 
-              <div className="border rounded-lg p-4">
+              <div className="p-4" style={{ 
+                border: '1px solid var(--bmw-hairline)',
+                borderRadius: '0'
+              }}>
                 <div className="flex items-center justify-between mb-2">
-                  <h3 className="font-semibold text-gray-900">Base de Datos</h3>
-                  <span className={`text-2xl ${getStatusColor(status.database.status)}`}>
+                  <h3 className="bmw-title-sm">Base de Datos</h3>
+                  <span className="text-2xl" style={getStatusColor(status.database.status)}>
                     {getStatusIcon(status.database.status)}
                   </span>
                 </div>
-                <p className={`text-sm ${getStatusColor(status.database.status)}`}>
+                <p className="bmw-body-sm" style={getStatusColor(status.database.status)}>
                   {status.database.message}
                 </p>
               </div>
 
-              <div className="border rounded-lg p-4">
+              <div className="p-4" style={{ 
+                border: '1px solid var(--bmw-hairline)',
+                borderRadius: '0'
+              }}>
                 <div className="flex items-center justify-between mb-2">
-                  <h3 className="font-semibold text-gray-900">Discord Bot</h3>
-                  <span className={`text-2xl ${getStatusColor(status.bot.status)}`}>
+                  <h3 className="bmw-title-sm">Discord Bot</h3>
+                  <span className="text-2xl" style={getStatusColor(status.bot.status)}>
                     {getStatusIcon(status.bot.status)}
                   </span>
                 </div>
-                <p className={`text-sm ${getStatusColor(status.bot.status)}`}>
+                <p className="bmw-body-sm" style={getStatusColor(status.bot.status)}>
                   {status.bot.message}
                 </p>
               </div>
 
-              <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-                <p className="text-xs text-gray-600">
+              <div className="mt-6 p-4" style={{ 
+                backgroundColor: 'var(--bmw-surface-soft)',
+                borderRadius: '0'
+              }}>
+                <p className="bmw-body-sm" style={{ fontSize: '12px', color: 'var(--bmw-body)' }}>
                   {status.api.status === 'ok' && status.database.status === 'ok' && status.bot.status === 'ok'
                     ? 'Todos los sistemas operando correctamente.'
                     : 'Algunos componentes requieren atención. Revisa la configuración.'}
@@ -133,14 +162,22 @@ export const StatusModal = ({ onClose }: StatusModalProps) => {
           <div className="mt-6 flex justify-end gap-3">
             <button
               onClick={checkSystemStatus}
-              className="px-4 py-2 text-blue-600 hover:text-blue-700 font-medium"
+              className="bmw-btn-text"
               disabled={loading}
+              style={{ 
+                color: 'var(--bmw-primary)',
+                padding: '8px 16px'
+              }}
             >
               Verificar de nuevo
             </button>
             <button
               onClick={onClose}
-              className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 font-medium"
+              className="bmw-btn-secondary"
+              style={{ 
+                height: '40px',
+                padding: '8px 24px'
+              }}
             >
               Cerrar
             </button>

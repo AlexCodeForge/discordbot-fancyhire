@@ -23,63 +23,70 @@ export function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-md">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">CRM Leads</h1>
-          <p className="text-gray-600">Ingresa tus credenciales para continuar</p>
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Usuario
-            </label>
-            <input
-              type="text"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="Ingresa tu usuario"
-              required
-              autoComplete="username"
-            />
+    <div className="min-h-screen flex items-center justify-center p-4" style={{ backgroundColor: 'var(--bmw-canvas)' }}>
+      <div className="w-full max-w-md">
+        <div className="bmw-card">
+          <div className="text-center mb-8">
+            <h1 style={{ fontSize: '48px', lineHeight: '1.1', marginBottom: '16px' }}>CRM Leads</h1>
+            <p className="bmw-body-sm" style={{ color: 'var(--bmw-body)' }}>Ingresa tus credenciales para continuar</p>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Contraseña
-            </label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="Ingresa tu contraseña"
-              required
-              autoComplete="current-password"
-            />
-          </div>
-
-          {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
-              {error}
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div>
+              <label className="bmw-label block mb-2">
+                Usuario
+              </label>
+              <input
+                type="text"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                className="bmw-input w-full"
+                placeholder="Ingresa tu usuario"
+                required
+                autoComplete="username"
+              />
             </div>
-          )}
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-blue-600 text-white py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {loading ? 'Iniciando sesión...' : 'Iniciar Sesión'}
-          </button>
-        </form>
+            <div>
+              <label className="bmw-label block mb-2">
+                Contraseña
+              </label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="bmw-input w-full"
+                placeholder="Ingresa tu contraseña"
+                required
+                autoComplete="current-password"
+              />
+            </div>
 
-        <div className="mt-6 text-center">
-          <p className="text-xs text-gray-500">
-            Sistema de gestión de leads con Discord
-          </p>
+            {error && (
+              <div className="px-4 py-3 bmw-body-sm" style={{ 
+                backgroundColor: '#fee2e2', 
+                border: '1px solid var(--bmw-error)', 
+                color: 'var(--bmw-error)',
+                borderRadius: '0'
+              }}>
+                {error}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="bmw-btn-primary w-full flex items-center justify-center"
+            >
+              {loading ? 'Iniciando sesión...' : 'Iniciar Sesión'}
+            </button>
+          </form>
+
+          <div className="mt-6 text-center">
+            <p className="bmw-body-sm" style={{ color: 'var(--bmw-muted)', fontSize: '12px' }}>
+              Sistema de gestión de leads con Discord
+            </p>
+          </div>
         </div>
       </div>
     </div>

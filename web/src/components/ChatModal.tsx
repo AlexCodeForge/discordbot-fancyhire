@@ -76,23 +76,37 @@ export function ChatModal({ lead, onClose }: ChatModalProps) {
 
   if (!lead.discord_id) {
     return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4">
-        <div className="bg-white rounded-lg max-w-md w-full p-6">
+      <div className="fixed inset-0 flex items-center justify-center z-[60] p-4" style={{ 
+        backgroundColor: 'rgba(0, 0, 0, 0.5)'
+      }}>
+        <div className="max-w-md w-full p-6" style={{ 
+          backgroundColor: 'var(--bmw-canvas)',
+          borderRadius: '0',
+          border: '1px solid var(--bmw-hairline)'
+        }}>
           <div className="flex justify-between items-start mb-4">
-            <h2 className="text-xl font-bold text-gray-900">Conversar</h2>
+            <h2 className="bmw-title-md">Conversar</h2>
             <button
               onClick={onClose}
-              className="text-gray-500 hover:text-gray-700 text-2xl"
+              className="bmw-body-sm"
+              style={{ 
+                background: 'transparent',
+                border: 'none',
+                color: 'var(--bmw-muted)',
+                fontSize: '32px',
+                cursor: 'pointer',
+                lineHeight: '1'
+              }}
             >
               ×
             </button>
           </div>
-          <p className="text-gray-600 mb-4">
+          <p className="bmw-body-sm mb-4" style={{ color: 'var(--bmw-body)' }}>
             Este lead no tiene un Discord ID asociado. No es posible enviar mensajes directos.
           </p>
           <button
             onClick={onClose}
-            className="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+            className="bmw-btn-primary w-full"
           >
             Cerrar
           </button>
@@ -102,24 +116,38 @@ export function ChatModal({ lead, onClose }: ChatModalProps) {
   }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4">
-      <div className="bg-white rounded-lg max-w-4xl w-full h-[80vh] flex flex-col">
-        <div className="p-4 border-b flex justify-between items-center">
+    <div className="fixed inset-0 flex items-center justify-center z-[60] p-4" style={{ 
+      backgroundColor: 'rgba(0, 0, 0, 0.5)'
+    }}>
+      <div className="max-w-4xl w-full h-[80vh] flex flex-col" style={{ 
+        backgroundColor: 'var(--bmw-canvas)',
+        borderRadius: '0',
+        border: '1px solid var(--bmw-hairline)'
+      }}>
+        <div className="p-4 flex justify-between items-center" style={{ borderBottom: '1px solid var(--bmw-hairline)' }}>
           <div>
-            <h2 className="text-xl font-bold text-gray-900">Conversación con {lead.name}</h2>
-            <p className="text-sm text-gray-500">{lead.discord_tag || lead.discord_id}</p>
+            <h2 className="bmw-title-md">Conversación con {lead.name}</h2>
+            <p className="bmw-body-sm" style={{ color: 'var(--bmw-muted)' }}>{lead.discord_tag || lead.discord_id}</p>
           </div>
           <button
             onClick={onClose}
-            className="text-gray-500 hover:text-gray-700 text-2xl"
+            className="bmw-body-sm"
+            style={{ 
+              background: 'transparent',
+              border: 'none',
+              color: 'var(--bmw-muted)',
+              fontSize: '32px',
+              cursor: 'pointer',
+              lineHeight: '1'
+            }}
           >
             ×
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-gray-50">
+        <div className="flex-1 overflow-y-auto p-4 space-y-3" style={{ backgroundColor: 'var(--bmw-surface-soft)' }}>
           {messages.length === 0 ? (
-            <div className="text-center text-gray-500 mt-8">
+            <div className="text-center bmw-body-sm mt-8" style={{ color: 'var(--bmw-muted)' }}>
               No hay mensajes todavía. Inicia la conversación.
             </div>
           ) : (
@@ -129,20 +157,27 @@ export function ChatModal({ lead, onClose }: ChatModalProps) {
                 className={`flex ${msg.sender_type === 'admin' ? 'justify-end' : 'justify-start'}`}
               >
                 <div
-                  className={`max-w-[70%] rounded-lg px-4 py-2 ${
-                    msg.sender_type === 'admin'
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-white text-gray-900 border border-gray-200'
-                  }`}
+                  className="max-w-[70%] px-4 py-2"
+                  style={{
+                    borderRadius: '0',
+                    backgroundColor: msg.sender_type === 'admin' ? 'var(--bmw-primary)' : 'var(--bmw-canvas)',
+                    color: msg.sender_type === 'admin' ? 'var(--bmw-on-primary)' : 'var(--bmw-ink)',
+                    border: msg.sender_type === 'admin' ? 'none' : '1px solid var(--bmw-hairline)'
+                  }}
                 >
-                  <div className="text-sm font-medium mb-1">
+                  <div className="bmw-body-sm mb-1" style={{ 
+                    fontWeight: 700,
+                    color: msg.sender_type === 'admin' ? 'var(--bmw-on-primary)' : 'var(--bmw-ink)'
+                  }}>
                     {msg.sender_name || (msg.sender_type === 'admin' ? 'Admin' : 'Usuario')}
                   </div>
-                  <div className="whitespace-pre-wrap break-words">{msg.content}</div>
+                  <div className="bmw-body-sm whitespace-pre-wrap break-words">{msg.content}</div>
                   <div
-                    className={`text-xs mt-1 ${
-                      msg.sender_type === 'admin' ? 'text-blue-100' : 'text-gray-400'
-                    }`}
+                    className="bmw-body-sm mt-1"
+                    style={{
+                      fontSize: '12px',
+                      color: msg.sender_type === 'admin' ? 'rgba(255, 255, 255, 0.7)' : 'var(--bmw-muted)'
+                    }}
                   >
                     {new Date(msg.sent_at).toLocaleTimeString('es-ES', {
                       hour: '2-digit',
@@ -150,7 +185,12 @@ export function ChatModal({ lead, onClose }: ChatModalProps) {
                     })}
                   </div>
                   {msg.error && (
-                    <div className="text-xs mt-1 text-red-300 bg-red-900 bg-opacity-30 rounded px-2 py-1">
+                    <div className="bmw-body-sm mt-1 px-2 py-1" style={{ 
+                      fontSize: '12px',
+                      color: '#fca5a5',
+                      backgroundColor: 'rgba(220, 38, 38, 0.3)',
+                      borderRadius: '0'
+                    }}>
                       Error: {msg.error}
                     </div>
                   )}
@@ -161,26 +201,31 @@ export function ChatModal({ lead, onClose }: ChatModalProps) {
           <div ref={messagesEndRef} />
         </div>
 
-        <div className="p-4 border-t bg-white">
+        <div className="p-4" style={{ 
+          borderTop: '1px solid var(--bmw-hairline)',
+          backgroundColor: 'var(--bmw-canvas)'
+        }}>
           <div className="flex gap-2">
             <textarea
               value={newMessage}
               onChange={(e) => setNewMessage(e.target.value)}
               onKeyPress={handleKeyPress}
               placeholder="Escribe un mensaje... (Enter para enviar, Shift+Enter para nueva línea)"
-              className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+              className="bmw-input flex-1 resize-none"
               rows={3}
               disabled={sending}
+              style={{ height: 'auto' }}
             />
             <button
               onClick={handleSend}
               disabled={sending || !newMessage.trim()}
-              className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed self-end"
+              className="bmw-btn-primary self-end"
+              style={{ height: '48px', padding: '8px 24px' }}
             >
               {sending ? 'Enviando...' : 'Enviar'}
             </button>
           </div>
-          <div className="text-xs text-gray-500 mt-1">
+          <div className="bmw-body-sm mt-1" style={{ fontSize: '12px', color: 'var(--bmw-muted)' }}>
             {newMessage.length}/2000 caracteres
           </div>
         </div>
