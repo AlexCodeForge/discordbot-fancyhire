@@ -2,11 +2,14 @@ import { useState, useEffect } from 'react';
 import {
   DndContext,
   DragEndEvent,
+  DragOverEvent,
   DragOverlay,
   PointerSensor,
   useSensor,
   useSensors,
+  closestCorners,
 } from '@dnd-kit/core';
+import { arrayMove } from '@dnd-kit/sortable';
 import { Lead, LeadStage, STAGES } from './types/Lead';
 import { api } from './services/api';
 import { KanbanColumn } from './components/KanbanColumn';
@@ -56,24 +59,97 @@ function App() {
     setActiveLead(lead || null);
   };
 
+  const handleDragOver = (event: DragOverEvent) => {
+    const { active, over } = event;
+    if (!over) return;
+
+    const activeId = active.id as number;
+    const overId = over.id;
+
+    const activeLead = leads.find((l) => l.id === activeId);
+    if (!activeLead) return;
+
+    let overStage: LeadStage | null = null;
+    let overLead: Lead | null = null;
+
+    if (typeof overId === 'string' && STAGES.includes(overId as LeadStage)) {
+      overStage = overId as LeadStage;
+    } else {
+      overLead = leads.find((l) => l.id === overId) || null;
+      if (overLead) {
+        overStage = overLead.stage;
+      }
+    }
+
+    if (!overStage) return;
+
+    if (activeLead.stage !== overStage) {
+      const activeStageLeads = leads.filter((l) => l.stage === activeLead.stage && l.id !== activeId);
+      const overStageLeads = leads.filter((l) => l.stage === overStage);
+
+      const newLeads = [
+        ...leads.filter((l) => l.stage !== activeLead.stage && l.stage !== overStage),
+        ...activeStageLeads,
+        ...overStageLeads,
+        { ...activeLead, stage: overStage },
+      ];
+
+      setLeads(newLeads);
+    }
+  };
+
   const handleDragEnd = async (event: DragEndEvent) => {
     setActiveLead(null);
     
     const { active, over } = event;
-    if (!over) return;
+    if (!over) {
+      await loadLeads();
+      return;
+    }
 
-    const leadId = active.id as number;
-    const newStage = over.id as LeadStage;
+    const activeId = active.id as number;
+    const overId = over.id;
 
-    const lead = leads.find((l) => l.id === leadId);
-    if (!lead || lead.stage === newStage) return;
+    const activeLead = leads.find((l) => l.id === activeId);
+    if (!activeLead) return;
+
+    let targetStage: LeadStage;
+    let targetOrder: number;
+
+    if (typeof overId === 'string' && STAGES.includes(overId as LeadStage)) {
+      targetStage = overId as LeadStage;
+      const stageLeads = leads.filter((l) => l.stage === targetStage);
+      targetOrder = stageLeads.length + 1;
+    } else {
+      const overLead = leads.find((l) => l.id === overId);
+      if (!overLead) {
+        await loadLeads();
+        return;
+      }
+      targetStage = overLead.stage;
+
+      if (activeLead.stage === targetStage) {
+        const stageLeads = leads.filter((l) => l.stage === targetStage);
+        const oldIndex = stageLeads.findIndex((l) => l.id === activeId);
+        const newIndex = stageLeads.findIndex((l) => l.id === overId);
+
+        if (oldIndex === newIndex) return;
+
+        targetOrder = newIndex + 1;
+      } else {
+        const stageLeads = leads.filter((l) => l.stage === targetStage);
+        const targetIndex = stageLeads.findIndex((l) => l.id === overId);
+        targetOrder = targetIndex + 1;
+      }
+    }
 
     try {
-      await api.updateLead(leadId, { stage: newStage });
+      await api.reorderLead(activeId, targetStage, targetOrder);
       await loadLeads();
     } catch (error) {
-      console.error('Error actualizando lead:', error);
+      console.error('Error reordenando lead:', error);
       alert('Error al mover el lead');
+      await loadLeads();
     }
   };
 
@@ -107,7 +183,9 @@ function App() {
 
           <DndContext
             sensors={sensors}
+            collisionDetection={closestCorners}
             onDragStart={handleDragStart}
+            onDragOver={handleDragOver}
             onDragEnd={handleDragEnd}
           >
             <div className="flex gap-4 overflow-x-auto pb-4">

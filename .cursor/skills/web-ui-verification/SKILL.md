@@ -40,8 +40,7 @@ All tools are in the `user-playwright` MCP server:
 - `browser_tabs` - List open tabs
 
 ### Inspection
-- `browser_snapshot` - Get page structure (better than screenshot)
-- `browser_take_screenshot` - Visual screenshot
+- `browser_snapshot` - Get page structure
 - `browser_console_messages` - Get console logs
 - `browser_network_requests` - View network activity
 
@@ -111,14 +110,6 @@ When verifying UI:
    - Take snapshot
    - Verify state changed correctly
 3. Close browser
-```
-
-### Pattern 3: Visual Check
-```
-1. Navigate to page
-2. Take screenshot
-3. Report visual state
-4. Close browser
 ```
 
 ## Element Selection

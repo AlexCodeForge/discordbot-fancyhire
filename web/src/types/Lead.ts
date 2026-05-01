@@ -11,6 +11,7 @@ export interface Lead {
   assigned_to?: string;
   notes?: string;
   source: 'auto' | 'manual';
+  display_order: number;
   created_at: string;
   updated_at: string;
   unread_count?: number;

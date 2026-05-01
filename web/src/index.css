@@ -217,3 +217,68 @@
     color: var(--bmw-ink);
   }
 }
+
+@layer utilities {
+  .drop-indicator {
+    position: relative;
+    border-top: 4px solid transparent !important;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  }
+  
+  .drop-indicator::before {
+    content: '';
+    position: absolute;
+    left: -8px;
+    right: -8px;
+    top: -10px;
+    height: 4px;
+    background: linear-gradient(90deg, transparent, var(--bmw-primary), transparent);
+    border-radius: 4px;
+    animation: pulse-indicator 0.8s ease-in-out infinite;
+    box-shadow: 0 0 12px rgba(28, 105, 212, 0.8), 0 0 20px rgba(28, 105, 212, 0.4);
+    z-index: 10;
+  }
+  
+  .drop-indicator::after {
+    content: '';
+    position: absolute;
+    left: -4px;
+    right: -4px;
+    top: -6px;
+    bottom: -6px;
+    border: 2px dashed var(--bmw-primary);
+    border-radius: 4px;
+    opacity: 0.3;
+    animation: pulse-border 1.2s ease-in-out infinite;
+    pointer-events: none;
+  }
+  
+  .drop-indicator-top::before {
+    top: -10px;
+  }
+  
+  .drop-indicator-bottom::before {
+    top: auto;
+    bottom: -10px;
+  }
+  
+  @keyframes pulse-indicator {
+    0%, 100% {
+      opacity: 0.6;
+      transform: scaleX(0.95);
+    }
+    50% {
+      opacity: 1;
+      transform: scaleX(1);
+    }
+  }
+  
+  @keyframes pulse-border {
+    0%, 100% {
+      opacity: 0.2;
+    }
+    50% {
+      opacity: 0.4;
+    }
+  }
+}

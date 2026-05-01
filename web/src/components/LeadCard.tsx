@@ -17,6 +17,7 @@ export function LeadCard({ lead, onClick }: LeadCardProps) {
     transform,
     transition,
     isDragging,
+    isOver,
   } = useSortable({ id: lead.id });
 
   const [discordMember, setDiscordMember] = useState<DiscordMember | null>(null);
@@ -38,8 +39,10 @@ export function LeadCard({ lead, onClick }: LeadCardProps) {
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
-    opacity: isDragging ? 0.5 : 1,
+    opacity: isDragging ? 0 : 1,
   };
+
+  const dropIndicatorClass = isOver ? 'drop-indicator drop-indicator-top' : '';
 
   const hasUnreadMessages = lead.unread_count && lead.unread_count > 0;
 
@@ -61,7 +64,7 @@ export function LeadCard({ lead, onClick }: LeadCardProps) {
       {...attributes}
       {...listeners}
       onClick={onClick}
-      className="bmw-card cursor-pointer mb-3"
+      className={`bmw-card cursor-pointer mb-3 ${dropIndicatorClass}`}
       onMouseEnter={(e) => {
         e.currentTarget.style.borderColor = 'var(--bmw-ink)';
       }}

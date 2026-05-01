@@ -43,6 +43,11 @@ export const api = {
     return response.data;
   },
 
+  async reorderLead(id: number, stage: string, order: number): Promise<Lead> {
+    const response = await axios.post(`${API_URL}/${id}/reorder`, { stage, order });
+    return response.data;
+  },
+
   async getMessages(leadId: number): Promise<any[]> {
     const response = await axios.get(`${MESSAGES_URL}/${leadId}`);
     return response.data;

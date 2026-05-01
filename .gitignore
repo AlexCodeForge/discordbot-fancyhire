@@ -59,3 +59,4 @@ temp/
 api/.bot-status.json
 api/.bot-status.json
 api/.discord-members-cache.json
+.playwright-mcp/*

@@ -88,4 +88,27 @@ router.get('/:id/history', async (req, res, next) => {
   }
 });
 
+router.post('/:id/reorder', async (req, res, next) => {
+  try {
+    const id = parseInt(req.params.id);
+    const { stage, order } = req.body;
+
+    if (!stage || order === undefined) {
+      return res.status(400).json({ error: 'Se requieren stage y order' });
+    }
+
+    const lead = await LeadModel.reorder(id, stage, order);
+
+    if (!lead) {
+      return res.status(404).json({ error: 'Lead no encontrado' });
+    }
+
+    Logger.info('Lead reordenado', { leadId: id, newStage: stage, newOrder: order }, req);
+
+    res.json(lead);
+  } catch (error) {
+    next(error);
+  }
+});
+
 export default router;
