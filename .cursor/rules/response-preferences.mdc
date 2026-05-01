@@ -55,6 +55,12 @@ DO NOT change proxy target or ports.
 - Only show code when the user asks for it
 - When editing code, just make the changes without showing examples
 
+## UI/Design Guidelines
+- For ANY UI-related task, ALWAYS follow `.cursor/DESIGN.md`
+- All components must adhere to BMW design system specifications
+- Use design tokens, typography, colors, and components defined in DESIGN.md
+- Maintain consistency with the BMW corporate design language
+
 ## Discord.js Framework
 - This project uses discord.js v14.26.2 as the main library
 - Essential for all Discord API interactions (events, commands, messages)
