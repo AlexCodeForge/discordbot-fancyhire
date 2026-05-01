@@ -13,6 +13,7 @@ export interface Lead {
   source: 'auto' | 'manual';
   created_at: string;
   updated_at: string;
+  unread_count?: number;
 }
 
 export interface LeadHistory {

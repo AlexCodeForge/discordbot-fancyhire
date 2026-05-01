@@ -13,6 +13,7 @@ export interface Lead {
   source: 'auto' | 'manual';
   created_at: Date;
   updated_at: Date;
+  unread_count?: number;
 }
 
 export interface LeadHistory {
@@ -27,7 +28,20 @@ export interface LeadHistory {
 
 export class LeadModel {
   static async getAll(): Promise<Lead[]> {
-    const result = await pool.query('SELECT * FROM leads ORDER BY created_at DESC');
+    const result = await pool.query(`
+      SELECT 
+        l.*,
+        COALESCE(
+          (SELECT COUNT(*) 
+           FROM messages m 
+           WHERE m.lead_id = l.id 
+           AND m.sender_type = 'user' 
+           AND m.read_at IS NULL),
+          0
+        ) as unread_count
+      FROM leads l 
+      ORDER BY l.created_at DESC
+    `);
     return result.rows;
   }
 

@@ -80,6 +80,7 @@ export function LeadModal({ lead, onClose, onUpdate }: LeadModalProps) {
             setShowChat(false);
             setUnreadCount(0);
             loadUnreadCount();
+            onUpdate();
           }}
         />
       )}

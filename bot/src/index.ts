@@ -1,4 +1,4 @@
-import { Client, GatewayIntentBits, Events, GuildMember, Partials, ChannelType } from 'discord.js';
+import { Client, GatewayIntentBits, Events, GuildMember, Partials, ChannelType, DMChannel, Message } from 'discord.js';
 import axios from 'axios';
 import fs from 'fs';
 import path from 'path';
@@ -63,6 +63,99 @@ const updateMembersCache = async () => {
   }
 };
 
+const syncDMChannel = async (channel: DMChannel, discordId: string): Promise<number> => {
+  try {
+    console.log(`Sincronizando mensajes del DM con ${discordId}...`);
+    
+    const messages = await channel.messages.fetch({ limit: 100 });
+    const sortedMessages = Array.from(messages.values()).sort((a, b) => 
+      a.createdTimestamp - b.createdTimestamp
+    );
+    
+    let syncedCount = 0;
+    
+    for (const msg of sortedMessages) {
+      if (msg.author.bot) continue;
+      
+      try {
+        const existsResponse = await axios.get(
+          `${config.apiUrl}/api/messages/check/${msg.id}`
+        );
+        
+        if (!existsResponse.data.exists) {
+          await axios.post(`${config.apiUrl}/api/messages/incoming`, {
+            discord_id: discordId,
+            content: msg.content,
+            discord_message_id: msg.id,
+            sender_name: msg.author.tag
+          });
+          syncedCount++;
+        }
+      } catch (error) {
+        console.error(`Error sincronizando mensaje ${msg.id}:`, error);
+      }
+    }
+    
+    if (syncedCount > 0) {
+      console.log(`✓ Sincronizados ${syncedCount} mensajes de ${discordId}`);
+    }
+    
+    return syncedCount;
+  } catch (error) {
+    console.error(`Error al sincronizar DM con ${discordId}:`, error);
+    return 0;
+  }
+};
+
+const syncAllDMs = async (): Promise<void> => {
+  try {
+    console.log('Iniciando sincronización de todos los DMs...');
+    
+    let membersData: any[] = [];
+    
+    try {
+      const cacheContent = fs.readFileSync(MEMBERS_CACHE_FILE, 'utf-8');
+      const cache = JSON.parse(cacheContent);
+      membersData = cache.members || [];
+    } catch (error) {
+      console.log('No se pudo leer cache, obteniendo desde Discord...');
+      const guilds = client.guilds.cache;
+      for (const [, guild] of guilds) {
+        const members = await guild.members.fetch();
+        members.forEach((member) => {
+          if (!member.user.bot) {
+            membersData.push({
+              id: member.id,
+              username: member.user.username,
+              tag: member.user.tag,
+            });
+          }
+        });
+      }
+    }
+    
+    let totalSynced = 0;
+    
+    for (const member of membersData) {
+      try {
+        const user = await client.users.fetch(member.id);
+        const dmChannel = user.dmChannel || await user.createDM();
+        
+        const synced = await syncDMChannel(dmChannel, member.id);
+        totalSynced += synced;
+        
+        await new Promise(resolve => setTimeout(resolve, 500));
+      } catch (error) {
+        console.error(`Error sincronizando miembro ${member.id}:`, error);
+      }
+    }
+    
+    console.log(`✓ Sincronización completada: ${totalSynced} mensajes nuevos`);
+  } catch (error) {
+    console.error('Error en sincronización general:', error);
+  }
+};
+
 client.once(Events.ClientReady, async (c) => {
   console.log(`Bot conectado como ${c.user.tag}`);
   console.log(`Monitoreando ${c.guilds.cache.size} servidor(es)`);
@@ -71,6 +164,9 @@ client.once(Events.ClientReady, async (c) => {
   
   await updateMembersCache();
   
+  console.log('Sincronizando mensajes perdidos...');
+  await syncAllDMs();
+  
   setInterval(() => {
     updateBotStatus(true, c.user.tag);
   }, 60000);
@@ -78,6 +174,11 @@ client.once(Events.ClientReady, async (c) => {
   setInterval(() => {
     updateMembersCache();
   }, 300000);
+  
+  setInterval(() => {
+    console.log('Ejecutando sincronización periódica...');
+    syncAllDMs();
+  }, 600000);
 });
 
 client.on(Events.GuildMemberAdd, async (member: GuildMember) => {

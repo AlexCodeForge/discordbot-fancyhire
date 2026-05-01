@@ -7,6 +7,16 @@ import { authMiddleware } from '../middleware/auth';
 
 const router = Router();
 
+router.get('/check/:discordMessageId', async (req, res, next) => {
+  try {
+    const { discordMessageId } = req.params;
+    const exists = await MessageModel.existsByDiscordMessageId(discordMessageId);
+    res.json({ exists });
+  } catch (error) {
+    next(error);
+  }
+});
+
 router.post('/incoming', async (req, res, next) => {
   try {
     const { discord_id, content, discord_message_id, sender_name } = req.body;

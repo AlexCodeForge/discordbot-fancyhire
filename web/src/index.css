@@ -26,6 +26,18 @@
     --bmw-success: #22c55e;
     --bmw-warning: #f59e0b;
     --bmw-error: #dc2626;
+    --bmw-interactive: #1c69d4;
+  }
+
+  @keyframes pulse {
+    0%, 100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 0.8;
+      transform: scale(1.05);
+    }
   }
 
   body {

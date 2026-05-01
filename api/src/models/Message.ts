@@ -75,6 +75,24 @@ export class MessageModel {
     const result = await pool.query('SELECT * FROM leads WHERE discord_id = $1', [discordId]);
     return result.rows[0] || null;
   }
+
+  static async existsByDiscordMessageId(discordMessageId: string): Promise<boolean> {
+    const result = await pool.query(
+      'SELECT EXISTS(SELECT 1 FROM messages WHERE discord_message_id = $1) as exists',
+      [discordMessageId]
+    );
+    return result.rows[0].exists;
+  }
+
+  static async getLatestDiscordMessageId(leadId: number): Promise<string | null> {
+    const result = await pool.query(
+      `SELECT discord_message_id FROM messages 
+       WHERE lead_id = $1 AND discord_message_id IS NOT NULL 
+       ORDER BY sent_at DESC LIMIT 1`,
+      [leadId]
+    );
+    return result.rows[0]?.discord_message_id || null;
+  }
 }
 
 interface Lead {
