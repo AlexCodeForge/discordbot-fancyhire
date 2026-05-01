@@ -1,0 +1,18 @@
+{
+  "name": "crm-discord-monorepo",
+  "version": "1.0.0",
+  "description": "Sistema CRM con Discord Bot y Kanban Board",
+  "private": true,
+  "scripts": {
+    "install:all": "cd api && npm install && cd ../bot && npm install && cd ../web && npm install",
+    "dev:api": "cd api && npm run dev",
+    "dev:bot": "cd bot && npm run dev",
+    "dev:web": "cd web && npm run dev",
+    "build:all": "cd api && npm run build && cd ../bot && npm run build && cd ../web && npm run build"
+  },
+  "workspaces": [
+    "api",
+    "bot",
+    "web"
+  ]
+}

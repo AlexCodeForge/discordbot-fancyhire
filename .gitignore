@@ -1,5 +1,6 @@
 # Credenciales y secretos
 DB-CREDENTIALS.txt
+CREDENCIALES_ACCESO.txt
 *.env
 .env
 .env.*
@@ -36,6 +37,10 @@ node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+dist/
+build/
+.next/
+out/
 
 # IDEs
 .vscode/

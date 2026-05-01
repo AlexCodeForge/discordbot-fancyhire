@@ -1,0 +1,37 @@
+---
+description: User response preferences and documentation policy
+alwaysApply: true
+---
+
+# Response Preferences
+
+
+
+## Documentation Files
+- NEVER create documentation files (.md, .txt, docs, README, etc.) unless explicitly requested
+- NEVER create example files or sample code files
+
+## Response Style
+- Keep responses SHORT and CONCISE
+- Be CLEAR and CONSISTENT
+- Focus on direct answers without elaboration
+- Skip explanations unless specifically asked
+
+## Code Examples
+- DO NOT provide code examples unless explicitly requested
+- Only show code when the user asks for it
+- When editing code, just make the changes without showing examples
+
+## Discord.js Framework
+- This project uses discord.js v14.26.2 as the main library
+- Essential for all Discord API interactions (events, commands, messages)
+- Reference official docs: https://discord.js.org/docs/packages/discord.js/14.26.2
+- Use modern discord.js patterns (slash commands, interactions, intents)
+
+## Logging System
+- Use `Logger` from `api/src/utils/Logger.ts` for all logging
+- Methods: `Logger.error()`, `Logger.warning()`, `Logger.info()`, `Logger.debug()`
+- Pass request object as last parameter for context
+- Logs stored in PostgreSQL `system_logs` table
+- View logs at: http://localhost:3003/logs or via API at `/api/logs`
+- Configure via env vars: `ENABLE_LOGGING`, `LOG_LEVEL`, `LOG_RETENTION_DAYS`
