@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Lead, LeadHistory, STAGE_LABELS, STAGES } from '../types/Lead';
 import { api } from '../services/api';
+import { ChatModal } from './ChatModal';
 
 interface LeadModalProps {
   lead: Lead;
@@ -12,10 +13,24 @@ export function LeadModal({ lead, onClose, onUpdate }: LeadModalProps) {
   const [editedLead, setEditedLead] = useState<Lead>(lead);
   const [history, setHistory] = useState<LeadHistory[]>([]);
   const [loading, setLoading] = useState(false);
+  const [showChat, setShowChat] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
     loadHistory();
+    if (lead.discord_id) {
+      loadUnreadCount();
+    }
   }, [lead.id]);
+
+  const loadUnreadCount = async () => {
+    try {
+      const count = await api.getUnreadCount(lead.id);
+      setUnreadCount(count);
+    } catch (error) {
+      console.error('Error cargando contador no leídos:', error);
+    }
+  };
 
   const loadHistory = async () => {
     try {
@@ -57,17 +72,43 @@ export function LeadModal({ lead, onClose, onUpdate }: LeadModalProps) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <>
+      {showChat && (
+        <ChatModal
+          lead={lead}
+          onClose={() => {
+            setShowChat(false);
+            setUnreadCount(0);
+            loadUnreadCount();
+          }}
+        />
+      )}
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg max-w-3xl w-full max-h-[90vh] overflow-y-auto">
         <div className="p-6">
           <div className="flex justify-between items-start mb-6">
             <h2 className="text-2xl font-bold text-gray-900">Detalles del Lead</h2>
-            <button
-              onClick={onClose}
-              className="text-gray-500 hover:text-gray-700 text-2xl"
-            >
-              ×
-            </button>
+            <div className="flex gap-2">
+              {lead.discord_id && (
+                <button
+                  onClick={() => setShowChat(true)}
+                  className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 flex items-center gap-2"
+                >
+                  Conversar
+                  {unreadCount > 0 && (
+                    <span className="bg-red-500 text-white text-xs rounded-full px-2 py-0.5 font-bold">
+                      {unreadCount}
+                    </span>
+                  )}
+                </button>
+              )}
+              <button
+                onClick={onClose}
+                className="text-gray-500 hover:text-gray-700 text-2xl"
+              >
+                ×
+              </button>
+            </div>
           </div>
 
           <div className="space-y-4">
@@ -204,5 +245,6 @@ export function LeadModal({ lead, onClose, onUpdate }: LeadModalProps) {
         </div>
       </div>
     </div>
+    </>
   );
 }

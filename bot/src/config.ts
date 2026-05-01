@@ -6,6 +6,7 @@ export const config = {
   discordToken: process.env.DISCORD_TOKEN || '',
   apiUrl: process.env.API_URL || 'http://localhost:3001',
   adminChannelId: process.env.ADMIN_CHANNEL_ID || '',
+  botHttpPort: parseInt(process.env.BOT_HTTP_PORT || '3002'),
 };
 
 if (!config.discordToken) {

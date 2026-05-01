@@ -1,4 +1,4 @@
-import { Client, GatewayIntentBits, Events, GuildMember } from 'discord.js';
+import { Client, GatewayIntentBits, Events, GuildMember, Partials, ChannelType } from 'discord.js';
 import axios from 'axios';
 import fs from 'fs';
 import path from 'path';
@@ -11,7 +11,10 @@ const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildMembers,
+    GatewayIntentBits.DirectMessages,
+    GatewayIntentBits.MessageContent,
   ],
+  partials: [Partials.Channel, Partials.Message],
 });
 
 const updateBotStatus = (connected: boolean, username?: string) => {
@@ -101,15 +104,19 @@ client.on(Events.GuildMemberAdd, async (member: GuildMember) => {
     console.log(`Lead creado exitosamente: ID ${response.data.id}`);
 
     if (config.adminChannelId) {
-      const adminChannel = await client.channels.fetch(config.adminChannelId);
-      if (adminChannel?.isTextBased()) {
-        await adminChannel.send(
-          `🆕 **Nuevo lead capturado automáticamente**\n` +
-          `👤 **Usuario:** ${member.user.tag}\n` +
-          `🆔 **ID:** ${member.id}\n` +
-          `📅 **Fecha:** ${new Date().toLocaleString('es-ES')}\n` +
-          `✅ Lead guardado en el CRM con ID: ${response.data.id}`
-        );
+      try {
+        const adminChannel = await client.channels.fetch(config.adminChannelId);
+        if (adminChannel?.isTextBased() && 'send' in adminChannel) {
+          await adminChannel.send(
+            `🆕 **Nuevo lead capturado automáticamente**\n` +
+            `👤 **Usuario:** ${member.user.tag}\n` +
+            `🆔 **ID:** ${member.id}\n` +
+            `📅 **Fecha:** ${new Date().toLocaleString('es-ES')}\n` +
+            `✅ Lead guardado en el CRM con ID: ${response.data.id}`
+          );
+        }
+      } catch (channelError) {
+        console.error('Error al notificar en canal admin:', channelError);
       }
     }
 
@@ -130,7 +137,7 @@ client.on(Events.GuildMemberAdd, async (member: GuildMember) => {
     if (config.adminChannelId) {
       try {
         const adminChannel = await client.channels.fetch(config.adminChannelId);
-        if (adminChannel?.isTextBased()) {
+        if (adminChannel?.isTextBased() && 'send' in adminChannel) {
           await adminChannel.send(
             `⚠️ **Error al capturar lead**\n` +
             `Usuario: ${member.user.tag}\n` +
@@ -142,6 +149,65 @@ client.on(Events.GuildMemberAdd, async (member: GuildMember) => {
       }
     }
   }
+});
+
+client.on(Events.MessageCreate, async (message) => {
+  if (message.author.bot) return;
+  if (message.channel.type !== ChannelType.DM) return;
+  
+  console.log(`DM recibido de ${message.author.tag}: ${message.content}`);
+  
+  try {
+    await axios.post(`${config.apiUrl}/api/messages/incoming`, {
+      discord_id: message.author.id,
+      content: message.content,
+      discord_message_id: message.id,
+      sender_name: message.author.tag
+    });
+    console.log(`Mensaje de ${message.author.tag} guardado en BD`);
+  } catch (error) {
+    console.error('Error al guardar mensaje DM:', error);
+  }
+});
+
+import express from 'express';
+
+export async function sendDMToLead(discordId: string, content: string): Promise<string> {
+  try {
+    const user = await client.users.fetch(discordId);
+    const dmChannel = await user.createDM();
+    const message = await dmChannel.send(content);
+    return message.id;
+  } catch (error) {
+    console.error(`Error enviando DM a ${discordId}:`, error);
+    throw error;
+  }
+}
+
+const botHttpServer = express();
+botHttpServer.use(express.json());
+
+botHttpServer.post('/send-dm', async (req, res) => {
+  const { discordId, content } = req.body;
+  
+  if (!discordId || !content) {
+    return res.status(400).json({ error: 'discordId y content son requeridos' });
+  }
+  
+  try {
+    const messageId = await sendDMToLead(discordId, content);
+    res.json({ success: true, discord_message_id: messageId });
+  } catch (error) {
+    res.status(500).json({ 
+      error: 'Error al enviar DM', 
+      message: error instanceof Error ? error.message : 'Error desconocido' 
+    });
+  }
+});
+
+const BOT_HTTP_PORT = config.botHttpPort || 3004;
+botHttpServer.listen(BOT_HTTP_PORT, '127.0.0.1', () => {
+  console.log(`Bot HTTP server escuchando en puerto ${BOT_HTTP_PORT}`);
 });
 
 client.on(Events.Error, (error) => {

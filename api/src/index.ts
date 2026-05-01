@@ -7,13 +7,14 @@ import logsRouter from './routes/logs';
 import systemRouter from './routes/system';
 import discordRouter from './routes/discord';
 import botRouter from './routes/bot';
+import messagesRouter from './routes/messages';
 import { errorHandler } from './middleware/errorHandler';
 import { authMiddleware } from './middleware/auth';
 
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 3001;
+const PORT = parseInt(process.env.PORT || '3001', 10);
 
 app.use(cors());
 app.use(express.json());
@@ -28,6 +29,7 @@ app.use('/api/leads', authMiddleware, leadsRouter);
 app.use('/api/logs', authMiddleware, logsRouter);
 app.use('/api/system', authMiddleware, systemRouter);
 app.use('/api/discord', authMiddleware, discordRouter);
+app.use('/api/messages', messagesRouter);
 
 app.use(errorHandler);
 

@@ -5,7 +5,40 @@ alwaysApply: true
 
 # Response Preferences
 
+## Application Overview
+**CRM Discord Bot** - Automated CRM system with lead capture via Discord.
 
+**Stack:**
+- REST API (Express + PostgreSQL)
+- Discord Bot (discord.js v14.26.2)
+- Web Frontend (React + Vite + TailwindCSS)
+
+**Functionality:**
+- Automatic lead capture when users join the Discord server
+- Kanban board for lead management (drag-and-drop)
+- Bidirectional messaging system (CRM ↔ Discord DMs)
+- Centralized logging system in PostgreSQL
+- JWT Authentication
+
+## Critical Configuration - DO NOT CHANGE
+
+**Ports (NEVER MODIFY):**
+- `3002` - REST API (Express server)
+- `3003` - Web Frontend (Vite dev server)
+- `3005` - Bot HTTP Server (Express endpoint for DM sending)
+- `5432` - PostgreSQL Database
+
+**Environment Variables:**
+- `API_URL=http://127.0.0.1:3002` (bot → api communication)
+- `BOT_URL=http://127.0.0.1:3005` (api → bot communication)
+- `VITE_API_URL` not used (web uses proxy to /api)
+
+**Vite Proxy Configuration:**
+```
+web/vite.config.ts:
+  proxy: { '/api': { target: 'http://localhost:3002' } }
+```
+DO NOT change proxy target or ports.
 
 ## Documentation Files
 - NEVER create documentation files (.md, .txt, docs, README, etc.) unless explicitly requested
