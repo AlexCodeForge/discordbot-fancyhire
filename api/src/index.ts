@@ -25,11 +25,23 @@ app.get('/health', (req, res) => {
 
 app.use('/api/auth', authRouter);
 app.use('/api/bot', botRouter);
+app.use('/api/messages', messagesRouter);
+
+app.post('/api/discord/members/sync', async (req, res) => {
+  try {
+    const { DiscordMemberModel } = await import('./models/DiscordMemberModel');
+    await DiscordMemberModel.upsert(req.body);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error sincronizando miembro:', error);
+    res.status(500).json({ error: 'Error al sincronizar miembro' });
+  }
+});
+
 app.use('/api/leads', authMiddleware, leadsRouter);
 app.use('/api/logs', authMiddleware, logsRouter);
 app.use('/api/system', authMiddleware, systemRouter);
 app.use('/api/discord', authMiddleware, discordRouter);
-app.use('/api/messages', messagesRouter);
 
 app.use(errorHandler);
 

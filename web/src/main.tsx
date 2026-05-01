@@ -4,6 +4,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import App from './App';
 import { Login } from './pages/Login';
 import { Logs } from './pages/Logs';
+import { Members } from './pages/Members';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import './index.css';
@@ -49,6 +50,14 @@ function AppRouter() {
         element={
           <ProtectedRoute>
             <Logs />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/members"
+        element={
+          <ProtectedRoute>
+            <Members />
           </ProtectedRoute>
         }
       />

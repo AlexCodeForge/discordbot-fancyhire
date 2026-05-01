@@ -5,7 +5,6 @@ import path from 'path';
 import { config } from './config';
 
 const BOT_STATUS_FILE = path.join(__dirname, '../../api/.bot-status.json');
-const MEMBERS_CACHE_FILE = path.join(__dirname, '../../api/.discord-members-cache.json');
 
 const client = new Client({
   intents: [
@@ -30,36 +29,59 @@ const updateBotStatus = (connected: boolean, username?: string) => {
   }
 };
 
-const updateMembersCache = async () => {
+const syncMemberToDatabase = async (member: GuildMember) => {
+  try {
+    const memberData = {
+      id: member.id,
+      username: member.user.username,
+      tag: member.user.tag,
+      display_name: member.displayName,
+      avatar: member.user.avatar,
+      joined_at: member.joinedAt?.toISOString() || null,
+      created_at: member.user.createdAt.toISOString(),
+      roles: member.roles.cache
+        .filter(role => role.id !== member.guild.id)
+        .map(role => ({
+          id: role.id,
+          name: role.name,
+          color: role.hexColor,
+          position: role.position
+        }))
+        .sort((a, b) => b.position - a.position),
+      permissions: {
+        administrator: member.permissions.has('Administrator'),
+        manageGuild: member.permissions.has('ManageGuild'),
+        manageRoles: member.permissions.has('ManageRoles'),
+        manageChannels: member.permissions.has('ManageChannels'),
+        kickMembers: member.permissions.has('KickMembers'),
+        banMembers: member.permissions.has('BanMembers')
+      }
+    };
+    
+    await axios.post(`${config.apiUrl}/api/discord/members/sync`, memberData);
+  } catch (error) {
+    console.error(`Error sincronizando miembro ${member.user.tag}:`, error);
+  }
+};
+
+const syncMembersToDatabase = async () => {
   try {
     const guilds = client.guilds.cache;
-    const allMembers: any[] = [];
+    let syncedCount = 0;
 
     for (const [, guild] of guilds) {
       const members = await guild.members.fetch();
-      members.forEach((member) => {
-        if (!member.user.bot) {
-          allMembers.push({
-            id: member.id,
-            username: member.user.username,
-            tag: member.user.tag,
-            displayName: member.displayName,
-            avatar: member.user.avatar,
-            joinedAt: member.joinedAt?.toISOString() || null,
-          });
-        }
-      });
+      
+      for (const [, member] of members) {
+        if (member.user.bot) continue;
+        await syncMemberToDatabase(member);
+        syncedCount++;
+      }
     }
 
-    const cache = {
-      members: allMembers,
-      lastUpdate: new Date().toISOString(),
-    };
-
-    fs.writeFileSync(MEMBERS_CACHE_FILE, JSON.stringify(cache, null, 2));
-    console.log(`Cache actualizado: ${allMembers.length} miembros`);
+    console.log(`Miembros sincronizados en base de datos: ${syncedCount}`);
   } catch (error) {
-    console.error('Error actualizando cache de miembros:', error);
+    console.error('Error sincronizando miembros:', error);
   }
 };
 
@@ -113,25 +135,18 @@ const syncAllDMs = async (): Promise<void> => {
     
     let membersData: any[] = [];
     
-    try {
-      const cacheContent = fs.readFileSync(MEMBERS_CACHE_FILE, 'utf-8');
-      const cache = JSON.parse(cacheContent);
-      membersData = cache.members || [];
-    } catch (error) {
-      console.log('No se pudo leer cache, obteniendo desde Discord...');
-      const guilds = client.guilds.cache;
-      for (const [, guild] of guilds) {
-        const members = await guild.members.fetch();
-        members.forEach((member) => {
-          if (!member.user.bot) {
-            membersData.push({
-              id: member.id,
-              username: member.user.username,
-              tag: member.user.tag,
-            });
-          }
-        });
-      }
+    const guilds = client.guilds.cache;
+    for (const [, guild] of guilds) {
+      const members = await guild.members.fetch();
+      members.forEach((member) => {
+        if (!member.user.bot) {
+          membersData.push({
+            id: member.id,
+            username: member.user.username,
+            tag: member.user.tag,
+          });
+        }
+      });
     }
     
     let totalSynced = 0;
@@ -162,7 +177,7 @@ client.once(Events.ClientReady, async (c) => {
   
   updateBotStatus(true, c.user.tag);
   
-  await updateMembersCache();
+  await syncMembersToDatabase();
   
   console.log('Sincronizando mensajes perdidos...');
   await syncAllDMs();
@@ -172,7 +187,7 @@ client.once(Events.ClientReady, async (c) => {
   }, 60000);
   
   setInterval(() => {
-    updateMembersCache();
+    syncMembersToDatabase();
   }, 300000);
   
   setInterval(() => {
@@ -252,6 +267,34 @@ client.on(Events.GuildMemberAdd, async (member: GuildMember) => {
   }
 });
 
+client.on(Events.GuildMemberUpdate, async (oldMember: GuildMember, newMember: GuildMember) => {
+  if (newMember.user.bot) return;
+  console.log(`Miembro actualizado: ${newMember.user.tag}`);
+  await syncMemberToDatabase(newMember);
+});
+
+client.on(Events.GuildMemberRemove, async (member: GuildMember) => {
+  if (member.user.bot) return;
+  console.log(`Miembro salió del servidor: ${member.user.tag}`);
+  try {
+    await axios.delete(`${config.apiUrl}/api/discord/members/${member.id}`);
+  } catch (error) {
+    console.error(`Error eliminando miembro ${member.user.tag}:`, error);
+  }
+});
+
+client.on(Events.UserUpdate, async (oldUser, newUser) => {
+  if (newUser.bot) return;
+  console.log(`Usuario actualizado: ${newUser.tag}`);
+  const guilds = client.guilds.cache;
+  for (const [, guild] of guilds) {
+    const member = guild.members.cache.get(newUser.id);
+    if (member) {
+      await syncMemberToDatabase(member);
+    }
+  }
+});
+
 client.on(Events.MessageCreate, async (message) => {
   if (message.author.bot) return;
   if (message.channel.type !== ChannelType.DM) return;
@@ -303,6 +346,91 @@ botHttpServer.post('/send-dm', async (req, res) => {
       error: 'Error al enviar DM', 
       message: error instanceof Error ? error.message : 'Error desconocido' 
     });
+  }
+});
+
+botHttpServer.post('/update-roles', async (req, res) => {
+  const { memberId, guildId, roleIds } = req.body;
+  
+  if (!memberId || !guildId || !roleIds) {
+    return res.status(400).json({ error: 'memberId, guildId y roleIds son requeridos' });
+  }
+  
+  try {
+    const guild = await client.guilds.fetch(guildId);
+    const member = await guild.members.fetch(memberId);
+    const botMember = guild.members.me;
+    
+    if (!botMember) {
+      return res.status(500).json({ 
+        error: 'Error al actualizar roles', 
+        message: 'Bot no encontrado en el servidor' 
+      });
+    }
+    
+    if (!botMember.permissions.has('ManageRoles')) {
+      return res.status(403).json({ 
+        error: 'Permisos insuficientes', 
+        message: 'El bot no tiene el permiso "Manage Roles"' 
+      });
+    }
+    
+    const highestBotRole = botMember.roles.highest;
+    const rolesToSet = roleIds.map((id: string) => guild.roles.cache.get(id)).filter((r: any) => r);
+    
+    for (const role of rolesToSet) {
+      if (role.position >= highestBotRole.position) {
+        return res.status(403).json({ 
+          error: 'Jerarquía de roles', 
+          message: `El rol "${role.name}" está por encima del rol del bot. Mueve el rol del bot más arriba en la configuración del servidor.` 
+        });
+      }
+    }
+    
+    await member.roles.set(roleIds);
+    await syncMemberToDatabase(member);
+    
+    console.log(`Roles actualizados para ${member.user.tag}: ${roleIds.length} roles`);
+    res.json({ success: true, message: 'Roles actualizados correctamente' });
+  } catch (error) {
+    console.error(`Error actualizando roles para ${memberId}:`, error);
+    res.status(500).json({ 
+      error: 'Error al actualizar roles', 
+      message: error instanceof Error ? error.message : 'Error desconocido' 
+    });
+  }
+});
+
+botHttpServer.get('/guilds', async (req, res) => {
+  try {
+    const guilds = client.guilds.cache.map(guild => ({
+      id: guild.id,
+      name: guild.name,
+      icon: guild.icon
+    }));
+    res.json(guilds);
+  } catch (error) {
+    res.status(500).json({ error: 'Error al obtener servidores' });
+  }
+});
+
+botHttpServer.get('/guilds/:guildId/roles', async (req, res) => {
+  try {
+    const { guildId } = req.params;
+    const guild = await client.guilds.fetch(guildId);
+    const roles = guild.roles.cache
+      .filter(role => role.id !== guild.id)
+      .map(role => ({
+        id: role.id,
+        name: role.name,
+        color: role.hexColor,
+        position: role.position,
+        permissions: role.permissions.bitfield.toString()
+      }))
+      .sort((a, b) => b.position - a.position);
+    res.json(roles);
+  } catch (error) {
+    res.status(500).json({ error: 'Error al obtener roles del servidor' });
   }
 });
 
