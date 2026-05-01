@@ -3,7 +3,6 @@ import { discordApi, DiscordMember, Guild, GuildRole } from '../services/discord
 import { Layout } from '../components/Layout';
 import { MemberAvatar } from '../components/MemberAvatar';
 import { RoleBadge } from '../components/RoleBadge';
-import { PermissionIcon } from '../components/PermissionIcon';
 
 export function Members() {
   const [members, setMembers] = useState<DiscordMember[]>([]);

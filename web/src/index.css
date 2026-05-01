@@ -15,6 +15,8 @@
     --bmw-hairline: #e6e6e6;
     --bmw-hairline-strong: #cccccc;
     --bmw-canvas: #ffffff;
+    --bmw-surface-1: #f7f7f7;
+    --bmw-surface-2: #f7f7f7;
     --bmw-surface-soft: #f7f7f7;
     --bmw-surface-card: #fafafa;
     --bmw-surface-strong: #ebebeb;
@@ -27,6 +29,7 @@
     --bmw-warning: #f59e0b;
     --bmw-error: #dc2626;
     --bmw-interactive: #1c69d4;
+    --bmw-on-surface-variant: #e6e6e6;
   }
 
   [data-theme='dark'] {
@@ -41,6 +44,8 @@
     --bmw-hairline: #3c3c3c;
     --bmw-hairline-strong: #5a5a5a;
     --bmw-canvas: #0f1419;
+    --bmw-surface-1: #1e252d;
+    --bmw-surface-2: #1a2129;
     --bmw-surface-soft: #1a2129;
     --bmw-surface-card: #1e252d;
     --bmw-surface-strong: #262e38;
@@ -53,6 +58,7 @@
     --bmw-warning: #f59e0b;
     --bmw-error: #ef4444;
     --bmw-interactive: #3b82f6;
+    --bmw-on-surface-variant: #3c3c3c;
   }
 
   @keyframes pulse {
@@ -149,6 +155,31 @@
     cursor: not-allowed;
   }
 
+  .bmw-btn-ghost {
+    background-color: transparent;
+    color: var(--bmw-muted);
+    border: none;
+    border-radius: 0;
+    padding: 0;
+    min-width: 48px;
+    min-height: 48px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background-color 0.2s ease, color 0.2s ease;
+  }
+
+  .bmw-btn-ghost:hover:not(:disabled) {
+    background-color: var(--bmw-surface-soft);
+    color: var(--bmw-error);
+  }
+
+  .bmw-btn-ghost:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
   .bmw-btn-text {
     background-color: transparent;
     color: var(--bmw-ink);
@@ -187,6 +218,17 @@
     padding: 24px;
   }
 
+  /* Emphasized card edge (BMW: depth via contrast, not drop shadow) */
+  .elevation-3 {
+    border: 1px solid var(--bmw-hairline-strong);
+  }
+
+  .elevation-2 {
+    box-shadow:
+      0 2px 8px rgba(26, 38, 41, 0.1),
+      0 1px 2px rgba(26, 38, 41, 0.06);
+  }
+
   .bmw-label {
     font-weight: 700;
     font-size: 13px;
@@ -201,6 +243,22 @@
     font-size: 14px;
     line-height: 1.55;
     color: var(--bmw-body);
+  }
+
+  .bmw-body-xs {
+    font-weight: 300;
+    font-size: 12px;
+    line-height: 1.4;
+    letter-spacing: 0.5px;
+    color: var(--bmw-muted);
+  }
+
+  .bmw-label-sm {
+    font-weight: 700;
+    font-size: 14px;
+    line-height: 1.4;
+    color: var(--bmw-ink);
+    letter-spacing: 0;
   }
 
   .bmw-title-sm {

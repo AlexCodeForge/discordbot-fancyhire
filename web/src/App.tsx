@@ -9,7 +9,6 @@ import {
   useSensors,
   closestCorners,
 } from '@dnd-kit/core';
-import { arrayMove } from '@dnd-kit/sortable';
 import { Lead, LeadStage, STAGES } from './types/Lead';
 import { api } from './services/api';
 import { KanbanColumn } from './components/KanbanColumn';

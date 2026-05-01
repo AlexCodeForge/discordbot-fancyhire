@@ -8,6 +8,8 @@ import systemRouter from './routes/system';
 import discordRouter from './routes/discord';
 import botRouter from './routes/bot';
 import messagesRouter from './routes/messages';
+import channelsRouter from './routes/channels';
+import channelMessagesRouter from './routes/channelMessages';
 import { errorHandler } from './middleware/errorHandler';
 import { authMiddleware } from './middleware/auth';
 
@@ -26,6 +28,8 @@ app.get('/health', (req, res) => {
 app.use('/api/auth', authRouter);
 app.use('/api/bot', botRouter);
 app.use('/api/messages', messagesRouter);
+app.use('/api/channels', channelMessagesRouter);
+app.use('/api/channels', channelsRouter);
 
 app.post('/api/discord/members/sync', async (req, res) => {
   try {

@@ -1,8 +1,20 @@
-import { Client, GatewayIntentBits, Events, GuildMember, Partials, ChannelType, DMChannel, Message } from 'discord.js';
+import {
+  Client,
+  GatewayIntentBits,
+  Events,
+  GuildMember,
+  Partials,
+  ChannelType,
+  DMChannel,
+  GuildChannel,
+} from 'discord.js';
 import axios from 'axios';
+import express from 'express';
 import fs from 'fs';
 import path from 'path';
 import { config } from './config';
+import { syncAllChannels, buildChannelSyncPayload, isSyncableChannelType } from './events/channelSync';
+import { buildChannelIncomingPayload } from './events/channelMessageSync';
 
 const BOT_STATUS_FILE = path.join(__dirname, '../../api/.bot-status.json');
 
@@ -12,6 +24,7 @@ const client = new Client({
     GatewayIntentBits.GuildMembers,
     GatewayIntentBits.DirectMessages,
     GatewayIntentBits.MessageContent,
+    GatewayIntentBits.GuildMessages,
   ],
   partials: [Partials.Channel, Partials.Message],
 });
@@ -181,18 +194,25 @@ client.once(Events.ClientReady, async (c) => {
   
   console.log('Sincronizando mensajes perdidos...');
   await syncAllDMs();
-  
+
+  await syncAllChannels(client);
+
   setInterval(() => {
     updateBotStatus(true, c.user.tag);
   }, 60000);
-  
+
   setInterval(() => {
     syncMembersToDatabase();
   }, 300000);
-  
+
   setInterval(() => {
     console.log('Ejecutando sincronización periódica...');
     syncAllDMs();
+  }, 600000);
+
+  setInterval(async () => {
+    console.log('Sincronizando canales con la API...');
+    await syncAllChannels(client);
   }, 600000);
 });
 
@@ -267,14 +287,14 @@ client.on(Events.GuildMemberAdd, async (member: GuildMember) => {
   }
 });
 
-client.on(Events.GuildMemberUpdate, async (oldMember: GuildMember, newMember: GuildMember) => {
+client.on(Events.GuildMemberUpdate, async (_oldMember, newMember) => {
   if (newMember.user.bot) return;
   console.log(`Miembro actualizado: ${newMember.user.tag}`);
-  await syncMemberToDatabase(newMember);
+  await syncMemberToDatabase(newMember as GuildMember);
 });
 
-client.on(Events.GuildMemberRemove, async (member: GuildMember) => {
-  if (member.user.bot) return;
+client.on(Events.GuildMemberRemove, async (member) => {
+  if (member.user?.bot) return;
   console.log(`Miembro salió del servidor: ${member.user.tag}`);
   try {
     await axios.delete(`${config.apiUrl}/api/discord/members/${member.id}`);
@@ -297,24 +317,78 @@ client.on(Events.UserUpdate, async (oldUser, newUser) => {
 
 client.on(Events.MessageCreate, async (message) => {
   if (message.author.bot) return;
-  if (message.channel.type !== ChannelType.DM) return;
-  
-  console.log(`DM recibido de ${message.author.tag}: ${message.content}`);
-  
-  try {
-    await axios.post(`${config.apiUrl}/api/messages/incoming`, {
-      discord_id: message.author.id,
-      content: message.content,
-      discord_message_id: message.id,
-      sender_name: message.author.tag
-    });
-    console.log(`Mensaje de ${message.author.tag} guardado en BD`);
-  } catch (error) {
-    console.error('Error al guardar mensaje DM:', error);
+
+  if (message.channel.type === ChannelType.DM) {
+    console.log(`DM recibido de ${message.author.tag}: ${message.content}`);
+
+    try {
+      await axios.post(`${config.apiUrl}/api/messages/incoming`, {
+        discord_id: message.author.id,
+        content: message.content,
+        discord_message_id: message.id,
+        sender_name: message.author.tag,
+      });
+      console.log(`Mensaje de ${message.author.tag} guardado en BD`);
+    } catch (error) {
+      console.error('Error al guardar mensaje DM:', error);
+    }
+    return;
+  }
+
+  if (message.guild && message.channel.isTextBased()) {
+    try {
+      await axios.post(
+        `${config.apiUrl}/api/channels/messages/incoming`,
+        buildChannelIncomingPayload(message)
+      );
+      console.log(`Mensaje de canal ${message.channelId} guardado en BD`);
+    } catch (error) {
+      console.error('Error al guardar mensaje de canal:', error);
+    }
   }
 });
 
-import express from 'express';
+client.on(Events.ChannelCreate, async (channel) => {
+  if (!channel.isDMBased() && 'guild' in channel && channel.guild && isSyncableChannelType(channel.type)) {
+    try {
+      await axios.post(
+        `${config.apiUrl}/api/channels/sync`,
+        buildChannelSyncPayload(channel as GuildChannel)
+      );
+    } catch (error) {
+      console.error('Error al sincronizar canal creado:', error);
+    }
+  }
+});
+
+client.on(Events.ChannelDelete, async (channel) => {
+  if (channel.isDMBased()) return;
+  try {
+    await axios.delete(`${config.apiUrl}/api/channels/${channel.id}`);
+  } catch (error) {
+    console.error('Error al eliminar canal en API:', error);
+  }
+});
+
+client.on(Events.MessageDelete, async (message) => {
+  if (!message.guildId) return;
+  try {
+    await axios.patch(`${config.apiUrl}/api/channels/messages/${message.id}/delete`);
+  } catch (error) {
+    console.error('Error al marcar mensaje eliminado en API:', error);
+  }
+});
+
+client.on(Events.MessageUpdate, async (_oldMsg, newMsg) => {
+  if (!newMsg.guildId || newMsg.content == null) return;
+  try {
+    await axios.patch(`${config.apiUrl}/api/channels/messages/${newMsg.id}`, {
+      content: newMsg.content,
+    });
+  } catch (error) {
+    console.error('Error al actualizar mensaje en API:', error);
+  }
+});
 
 export async function sendDMToLead(discordId: string, content: string): Promise<string> {
   try {
@@ -326,6 +400,18 @@ export async function sendDMToLead(discordId: string, content: string): Promise<
     console.error(`Error enviando DM a ${discordId}:`, error);
     throw error;
   }
+}
+
+function parseChannelTypeInput(type: unknown): ChannelType {
+  if (typeof type === 'number') return type as ChannelType;
+  if (typeof type === 'string') {
+    const t = type.toUpperCase();
+    if (t === 'GUILD_TEXT' || t === '0') return ChannelType.GuildText;
+    if (t === 'GUILD_ANNOUNCEMENT' || t === 'GUILD_NEWS' || t === '5')
+      return ChannelType.GuildAnnouncement;
+    if (t === 'GUILD_FORUM' || t === '15') return ChannelType.GuildForum;
+  }
+  return ChannelType.GuildText;
 }
 
 const botHttpServer = express();
@@ -431,6 +517,112 @@ botHttpServer.get('/guilds/:guildId/roles', async (req, res) => {
     res.json(roles);
   } catch (error) {
     res.status(500).json({ error: 'Error al obtener roles del servidor' });
+  }
+});
+
+botHttpServer.post('/send-channel-message', async (req, res) => {
+  const { channelId, content, mentions } = req.body;
+
+  if (!channelId || content === undefined || content === null) {
+    return res.status(400).json({ error: 'channelId y content son requeridos' });
+  }
+
+  try {
+    const ch = await client.channels.fetch(channelId);
+    if (!ch || !('guild' in ch) || !ch.guild || !ch.isTextBased()) {
+      return res.status(400).json({ error: 'El canal no admite mensajes de texto' });
+    }
+    const sent = await ch.send({
+      content: String(content),
+      allowedMentions: { users: Array.isArray(mentions) ? mentions : [] },
+    });
+    res.json({ success: true, discord_message_id: sent.id });
+  } catch (error) {
+    console.error('Error en send-channel-message:', error);
+    res.status(500).json({
+      error: 'Error al enviar mensaje al canal',
+      message: error instanceof Error ? error.message : 'Error desconocido',
+    });
+  }
+});
+
+botHttpServer.delete('/delete-channel-message', async (req, res) => {
+  const { channelId, messageId } = req.body;
+
+  if (!channelId || !messageId) {
+    return res.status(400).json({ error: 'channelId y messageId son requeridos' });
+  }
+
+  try {
+    const ch = await client.channels.fetch(channelId);
+    if (!ch || !('guild' in ch) || !ch.guild || !ch.isTextBased() || !('messages' in ch)) {
+      return res.status(400).json({ error: 'Canal inválido' });
+    }
+    const msg = await ch.messages.fetch(messageId);
+    await msg.delete();
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error en delete-channel-message:', error);
+    res.status(500).json({
+      error: 'Error al eliminar mensaje',
+      message: error instanceof Error ? error.message : 'Error desconocido',
+    });
+  }
+});
+
+botHttpServer.post('/create-channel', async (req, res) => {
+  const { name, type, topic, parentId } = req.body;
+
+  if (!name || typeof name !== 'string') {
+    return res.status(400).json({ error: 'name es requerido' });
+  }
+
+  const guild = client.guilds.cache.first();
+  if (!guild) {
+    return res.status(500).json({ error: 'No hay servidor disponible' });
+  }
+
+  try {
+    const channelType = parseChannelTypeInput(type);
+    const created = await guild.channels.create({
+      name: name.trim(),
+      type: channelType as
+        | ChannelType.GuildText
+        | ChannelType.GuildAnnouncement
+        | ChannelType.GuildForum,
+      topic: topic && typeof topic === 'string' ? topic : undefined,
+      parent: parentId && typeof parentId === 'string' ? parentId : undefined,
+    });
+    res.json({ success: true, channel_id: created.id });
+  } catch (error) {
+    console.error('Error en create-channel:', error);
+    res.status(500).json({
+      error: 'Error al crear canal',
+      message: error instanceof Error ? error.message : 'Error desconocido',
+    });
+  }
+});
+
+botHttpServer.delete('/delete-channel', async (req, res) => {
+  const { channelId } = req.body;
+
+  if (!channelId) {
+    return res.status(400).json({ error: 'channelId es requerido' });
+  }
+
+  try {
+    const ch = await client.channels.fetch(channelId);
+    if (!ch) {
+      return res.status(404).json({ error: 'Canal no encontrado' });
+    }
+    await ch.delete();
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error en delete-channel:', error);
+    res.status(500).json({
+      error: 'Error al eliminar canal',
+      message: error instanceof Error ? error.message : 'Error desconocido',
+    });
   }
 });
 

@@ -27,6 +27,15 @@ export function Layout({ children }: LayoutProps) {
       ),
     },
     {
+      name: 'Canales Discord',
+      path: '/channels',
+      icon: (
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+        </svg>
+      ),
+    },
+    {
       name: 'System Logs',
       path: '/logs',
       icon: (
@@ -252,7 +261,7 @@ export function Layout({ children }: LayoutProps) {
         </header>
 
         <main
-          className="flex-1 overflow-auto"
+          className="flex min-h-0 flex-1 flex-col overflow-auto"
           style={{
             backgroundColor: 'var(--bmw-surface-soft)',
           }}
