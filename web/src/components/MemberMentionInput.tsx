@@ -45,18 +45,41 @@ function getActiveMentionQuery(
   const before = text.slice(0, cursorPos);
   const at = before.lastIndexOf('@');
   if (at === -1) return null;
+  
+  // Verificar si el @ está precedido por < (mención completa)
+  if (at > 0 && before[at - 1] === '<') {
+    // Verificar si es una mención ya completa: <@números>
+    const afterAt = before.slice(at + 1);
+    if (/^\d+>/.test(afterAt)) {
+      return null; // Es una mención completa, no activar autocompletado
+    }
+  }
+  
+  // No activar si está precedido por una letra (email, etc)
   if (at > 0 && /\w/.test(before[at - 1]!)) return null;
+  
   const afterAt = before.slice(at + 1);
+  // No activar si hay espacios después del @
   if (/\s/.test(afterAt)) return null;
+  
   return { start: at, query: afterAt };
 }
 
 function memberAvatarUrl(m: DiscordMember): string {
-  if (m.avatar) {
-    return `https://cdn.discordapp.com/avatars/${m.id}/${m.avatar}.png?size=64`;
+  try {
+    if (m.avatar) {
+      return `https://cdn.discordapp.com/avatars/${m.id}/${m.avatar}.png?size=64`;
+    }
+    // Validar que el ID sea numérico antes de convertir a BigInt
+    if (!/^\d+$/.test(m.id)) {
+      // Si no es numérico, usar avatar por defecto
+      return `https://cdn.discordapp.com/embed/avatars/0.png`;
+    }
+    const idx = Number((BigInt(m.id) >> 22n) % 6n);
+    return `https://cdn.discordapp.com/embed/avatars/${idx}.png`;
+  } catch (error) {
+    return `https://cdn.discordapp.com/embed/avatars/0.png`;
   }
-  const idx = Number((BigInt(m.id) >> 22n) % 6n);
-  return `https://cdn.discordapp.com/embed/avatars/${idx}.png`;
 }
 
 /** Viewport coordinates for fixed-position dropdown */
@@ -64,53 +87,68 @@ function getCaretViewportPosition(
   textarea: HTMLTextAreaElement,
   position: number
 ): { top: number; bottom: number; left: number; lineHeight: number } {
-  const mirror = document.createElement('div');
-  const inner = document.createElement('div');
-  const cs = window.getComputedStyle(textarea);
-  const taRect = textarea.getBoundingClientRect();
+  let mirror: HTMLDivElement | null = null;
+  try {
+    mirror = document.createElement('div');
+    const inner = document.createElement('div');
+    const cs = window.getComputedStyle(textarea);
+    const taRect = textarea.getBoundingClientRect();
 
-  mirror.style.position = 'fixed';
-  mirror.style.top = `${taRect.top}px`;
-  mirror.style.left = `${taRect.left}px`;
-  mirror.style.width = `${textarea.clientWidth}px`;
-  mirror.style.height = `${textarea.clientHeight}px`;
-  mirror.style.overflow = 'hidden';
-  mirror.style.visibility = 'hidden';
-  mirror.style.pointerEvents = 'none';
-  mirror.style.zIndex = '-1';
+    mirror.style.position = 'fixed';
+    mirror.style.top = `${taRect.top}px`;
+    mirror.style.left = `${taRect.left}px`;
+    mirror.style.width = `${textarea.clientWidth}px`;
+    mirror.style.height = `${textarea.clientHeight}px`;
+    mirror.style.overflow = 'hidden';
+    mirror.style.visibility = 'hidden';
+    mirror.style.pointerEvents = 'none';
+    mirror.style.zIndex = '-1';
 
-  inner.style.whiteSpace = 'pre-wrap';
-  inner.style.wordWrap = 'break-word';
-  inner.style.boxSizing = cs.boxSizing;
-  inner.style.fontFamily = cs.fontFamily;
-  inner.style.fontSize = cs.fontSize;
-  inner.style.fontWeight = cs.fontWeight;
-  inner.style.lineHeight = cs.lineHeight;
-  inner.style.letterSpacing = cs.letterSpacing;
-  inner.style.padding = cs.padding;
-  inner.style.border = cs.border;
-  inner.style.width = '100%';
-  inner.style.transform = `translateY(${-textarea.scrollTop}px)`;
+    inner.style.whiteSpace = 'pre-wrap';
+    inner.style.wordWrap = 'break-word';
+    inner.style.boxSizing = cs.boxSizing;
+    inner.style.fontFamily = cs.fontFamily;
+    inner.style.fontSize = cs.fontSize;
+    inner.style.fontWeight = cs.fontWeight;
+    inner.style.lineHeight = cs.lineHeight;
+    inner.style.letterSpacing = cs.letterSpacing;
+    inner.style.padding = cs.padding;
+    inner.style.border = cs.border;
+    inner.style.width = '100%';
+    inner.style.transform = `translateY(${-textarea.scrollTop}px)`;
 
-  const before = document.createTextNode(textarea.value.slice(0, position));
-  const caretProbe = document.createElement('span');
-  caretProbe.textContent = textarea.value.slice(position) || '\u200b';
-  inner.appendChild(before);
-  inner.appendChild(caretProbe);
-  mirror.appendChild(inner);
-  document.body.appendChild(mirror);
+    const before = document.createTextNode(textarea.value.slice(0, position));
+    const caretProbe = document.createElement('span');
+    caretProbe.textContent = textarea.value.slice(position) || '\u200b';
+    inner.appendChild(before);
+    inner.appendChild(caretProbe);
+    mirror.appendChild(inner);
+    document.body.appendChild(mirror);
 
-  const probeRect = caretProbe.getBoundingClientRect();
-  const lh = parseFloat(cs.lineHeight) || parseFloat(cs.fontSize) * 1.55;
+    const probeRect = caretProbe.getBoundingClientRect();
+    const lh = parseFloat(cs.lineHeight) || parseFloat(cs.fontSize) * 1.55;
 
-  document.body.removeChild(mirror);
+    document.body.removeChild(mirror);
 
-  return {
-    top: probeRect.top,
-    bottom: probeRect.bottom,
-    left: probeRect.left,
-    lineHeight: lh,
-  };
+    return {
+      top: probeRect.top,
+      bottom: probeRect.bottom,
+      left: probeRect.left,
+      lineHeight: lh,
+    };
+  } catch (error) {
+    console.error('Error calculating caret position:', error);
+    if (mirror && mirror.parentNode) {
+      document.body.removeChild(mirror);
+    }
+    const taRect = textarea.getBoundingClientRect();
+    return {
+      top: taRect.top,
+      bottom: taRect.bottom,
+      left: taRect.left,
+      lineHeight: 20,
+    };
+  }
 }
 
 function renderHighlightedChunks(text: string): ReactNode[] {
@@ -179,16 +217,22 @@ export function MemberMentionInput({
         setMentionQuery('');
         return;
       }
-      const ctx = getActiveMentionQuery(text, selectionStart);
-      if (!ctx) {
+      try {
+        const ctx = getActiveMentionQuery(text, selectionStart);
+        if (!ctx) {
+          setDropdownVisible(false);
+          setMentionQuery('');
+          return;
+        }
+        setMentionQuery(ctx.query);
+        const nextSuggestions = filterMembers(members, ctx.query);
+        setDropdownVisible(nextSuggestions.length > 0);
+        setHighlightIndex(0);
+      } catch (error) {
+        console.error('Error in syncMentionUi:', error);
         setDropdownVisible(false);
         setMentionQuery('');
-        return;
       }
-      setMentionQuery(ctx.query);
-      const nextSuggestions = filterMembers(members, ctx.query);
-      setDropdownVisible(nextSuggestions.length > 0);
-      setHighlightIndex(0);
     },
     [disabled, members]
   );
@@ -201,7 +245,8 @@ export function MemberMentionInput({
       .then((data) => {
         if (!cancelled) setMembers(Array.isArray(data) ? data : []);
       })
-      .catch(() => {
+      .catch((error) => {
+        console.error('Error loading members:', error);
         if (!cancelled) setMembers([]);
       });
     return () => {
@@ -222,24 +267,29 @@ export function MemberMentionInput({
   }, [suggestions.length]);
 
   const updateDropdownPlacement = useCallback(() => {
-    const ta = textareaRef.current;
-    const wrap = wrapperRef.current;
-    if (!ta || !wrap || !dropdownVisible) return;
+    try {
+      const ta = textareaRef.current;
+      const wrap = wrapperRef.current;
+      if (!ta || !wrap || !dropdownVisible) return;
 
-    const ctx = getActiveMentionQuery(ta.value, ta.selectionStart);
-    if (!ctx || filterMembers(members, ctx.query).length === 0) return;
+      const ctx = getActiveMentionQuery(ta.value, ta.selectionStart);
+      if (!ctx || filterMembers(members, ctx.query).length === 0) return;
 
-    const caret = getCaretViewportPosition(ta, ta.selectionStart);
-    const width = Math.max(240, wrap.getBoundingClientRect().width);
-    const pad = 4;
-    let top = caret.bottom + pad;
-    let left = Math.min(caret.left, window.innerWidth - width - 8);
-    left = Math.max(8, left);
-    const maxH = 280;
-    if (top + maxH > window.innerHeight) {
-      top = Math.max(8, caret.top - maxH - pad);
+      const caret = getCaretViewportPosition(ta, ta.selectionStart);
+      const width = Math.max(240, wrap.getBoundingClientRect().width);
+      const pad = 4;
+      let top = caret.bottom + pad;
+      let left = Math.min(caret.left, window.innerWidth - width - 8);
+      left = Math.max(8, left);
+      const maxH = 280;
+      if (top + maxH > window.innerHeight) {
+        top = Math.max(8, caret.top - maxH - pad);
+      }
+      setDropdownPos({ top, left, width });
+    } catch (error) {
+      console.error('Error in updateDropdownPlacement:', error);
+      setDropdownVisible(false);
     }
-    setDropdownPos({ top, left, width });
   }, [dropdownVisible, members]);
 
   useLayoutEffect(() => {
@@ -294,39 +344,49 @@ export function MemberMentionInput({
   };
 
   const insertMention = (member: DiscordMember) => {
-    const ta = textareaRef.current;
-    if (!ta || disabled) return;
-    const ctx = getActiveMentionQuery(ta.value, ta.selectionStart);
-    if (!ctx) return;
+    try {
+      const ta = textareaRef.current;
+      if (!ta || disabled) return;
+      const ctx = getActiveMentionQuery(ta.value, ta.selectionStart);
+      if (!ctx) return;
 
-    const { start } = ctx;
-    const cursor = ta.selectionStart;
-    const current = ta.value;
-    const before = current.slice(0, start);
-    const after = current.slice(cursor);
-    const insert = `<@${member.id}>`;
-    let next = before + insert + after;
-    if (maxLength !== undefined && next.length > maxLength) {
-      next = next.slice(0, maxLength);
+      const { start } = ctx;
+      const cursor = ta.selectionStart;
+      const current = ta.value;
+      const before = current.slice(0, start);
+      const after = current.slice(cursor);
+      const insert = `<@${member.id}>`;
+      let next = before + insert + after;
+      if (maxLength !== undefined && next.length > maxLength) {
+        next = next.slice(0, maxLength);
+      }
+      emitChange(next);
+      setDropdownVisible(false);
+      setMentionQuery('');
+
+      requestAnimationFrame(() => {
+        const el = textareaRef.current;
+        if (!el) return;
+        const pos = Math.min(before.length + insert.length, next.length);
+        el.focus();
+        el.setSelectionRange(pos, pos);
+      });
+    } catch (error) {
+      console.error('Error inserting mention:', error);
+      setDropdownVisible(false);
+      setMentionQuery('');
     }
-    emitChange(next);
-    setDropdownVisible(false);
-    setMentionQuery('');
-
-    requestAnimationFrame(() => {
-      const el = textareaRef.current;
-      if (!el) return;
-      const pos = Math.min(before.length + insert.length, next.length);
-      el.focus();
-      el.setSelectionRange(pos, pos);
-    });
   };
 
   const onChangeTextarea = (e: ChangeEvent<HTMLTextAreaElement>) => {
-    const next = e.target.value;
-    if (maxLength !== undefined && next.length > maxLength) return;
-    emitChange(next);
-    syncMentionUi(next, e.target.selectionStart);
+    try {
+      const next = e.target.value;
+      if (maxLength !== undefined && next.length > maxLength) return;
+      emitChange(next);
+      syncMentionUi(next, e.target.selectionStart);
+    } catch (error) {
+      console.error('Error in onChangeTextarea:', error);
+    }
   };
 
   const onSelectTextarea = (e: SyntheticEvent<HTMLTextAreaElement>) => {

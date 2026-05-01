@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { Lead, LeadHistory, STAGE_LABELS, STAGES } from '../types/Lead';
 import { api } from '../services/api';
 import { ChatModal } from './ChatModal';
+import { TicketsPanel } from './TicketsPanel';
+import { TicketChatModal } from './TicketChatModal';
 
 interface LeadModalProps {
   lead: Lead;
@@ -15,6 +17,8 @@ export function LeadModal({ lead, onClose, onUpdate }: LeadModalProps) {
   const [loading, setLoading] = useState(false);
   const [showChat, setShowChat] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [activeTab, setActiveTab] = useState<'details' | 'tickets'>('details');
+  const [selectedTicket, setSelectedTicket] = useState<any>(null);
 
   useEffect(() => {
     loadHistory();
@@ -84,6 +88,18 @@ export function LeadModal({ lead, onClose, onUpdate }: LeadModalProps) {
           }}
         />
       )}
+      
+      {selectedTicket && (
+        <TicketChatModal
+          ticket={selectedTicket}
+          onClose={() => setSelectedTicket(null)}
+          onTicketUpdated={() => {
+            setSelectedTicket(null);
+            setActiveTab('tickets');
+          }}
+        />
+      )}
+      
       <div className="fixed inset-0 flex items-center justify-center z-50 p-4" style={{ 
         backgroundColor: 'rgba(0, 0, 0, 0.5)'
       }}>
@@ -138,7 +154,48 @@ export function LeadModal({ lead, onClose, onUpdate }: LeadModalProps) {
             </div>
           </div>
 
-          <div className="space-y-4">
+          <div style={{ display: 'flex', gap: '24px', marginBottom: '24px', borderBottom: '2px solid var(--bmw-hairline)' }}>
+            <button
+              onClick={() => setActiveTab('details')}
+              style={{
+                background: 'none',
+                border: 'none',
+                padding: '12px 0',
+                fontSize: '14px',
+                fontWeight: 700,
+                color: activeTab === 'details' ? 'var(--bmw-ink)' : 'var(--bmw-muted)',
+                cursor: 'pointer',
+                borderBottom: activeTab === 'details' ? '2px solid var(--bmw-ink)' : 'none',
+                marginBottom: '-2px',
+                textTransform: 'uppercase',
+                letterSpacing: '1px'
+              }}
+            >
+              Detalles
+            </button>
+            <button
+              onClick={() => setActiveTab('tickets')}
+              style={{
+                background: 'none',
+                border: 'none',
+                padding: '12px 0',
+                fontSize: '14px',
+                fontWeight: 700,
+                color: activeTab === 'tickets' ? 'var(--bmw-ink)' : 'var(--bmw-muted)',
+                cursor: 'pointer',
+                borderBottom: activeTab === 'tickets' ? '2px solid var(--bmw-ink)' : 'none',
+                marginBottom: '-2px',
+                textTransform: 'uppercase',
+                letterSpacing: '1px'
+              }}
+            >
+              Tickets
+            </button>
+          </div>
+
+          {activeTab === 'details' ? (
+            <>
+              <div className="space-y-4">
             <div>
               <label className="bmw-label block mb-1">
                 Nombre
@@ -283,6 +340,13 @@ export function LeadModal({ lead, onClose, onUpdate }: LeadModalProps) {
               </button>
             </div>
           </div>
+            </>
+          ) : (
+            <TicketsPanel
+              leadId={lead.id}
+              onTicketSelect={(ticket) => setSelectedTicket(ticket)}
+            />
+          )}
         </div>
       </div>
     </div>

@@ -8,6 +8,7 @@ const API_URL = `${API_BASE}/api/leads`;
 const MESSAGES_URL = `${API_BASE}/api/messages`;
 const CHANNELS_URL = `${API_BASE}/api/channels`;
 const DISCORD_URL = `${API_BASE}/api/discord`;
+const TICKETS_URL = `${API_BASE}/api/tickets`;
 
 export interface DiscordMember {
   id: string;
@@ -174,6 +175,76 @@ export const api = {
       await axios.delete(`${CHANNELS_URL}/${channelId}/messages/${mid}`);
     } catch (err) {
       handleApiError(err, 'deleteChannelMessage');
+    }
+  },
+
+  async createTicket(leadId: number, createdBy: string): Promise<any> {
+    try {
+      const response = await axios.post(`${TICKETS_URL}/create`, {
+        lead_id: leadId,
+        created_by: createdBy
+      });
+      return response.data;
+    } catch (err) {
+      handleApiError(err, 'createTicket');
+    }
+  },
+
+  async getTickets(leadId: number): Promise<any[]> {
+    try {
+      const response = await axios.get(`${TICKETS_URL}/lead/${leadId}`);
+      return response.data;
+    } catch (err) {
+      handleApiError(err, 'getTickets');
+    }
+  },
+
+  async getTicketMessages(ticketId: number, limit: number = 100): Promise<any[]> {
+    try {
+      const response = await axios.get(`${TICKETS_URL}/${ticketId}/messages?limit=${limit}`);
+      return response.data;
+    } catch (err) {
+      handleApiError(err, 'getTicketMessages');
+    }
+  },
+
+  async closeTicket(ticketId: number, closedBy: string, notes?: string): Promise<any> {
+    try {
+      const response = await axios.post(`${TICKETS_URL}/${ticketId}/close`, {
+        closed_by: closedBy,
+        resolution_notes: notes,
+        delete_channel: false
+      });
+      return response.data;
+    } catch (err) {
+      handleApiError(err, 'closeTicket');
+    }
+  },
+
+  async transferTicket(ticketId: number, newUserId: string): Promise<void> {
+    try {
+      await axios.post(`${TICKETS_URL}/${ticketId}/transfer`, {
+        new_user_id: newUserId
+      });
+    } catch (err) {
+      handleApiError(err, 'transferTicket');
+    }
+  },
+
+  async deleteTicketChannel(ticketId: number): Promise<void> {
+    try {
+      await axios.delete(`${TICKETS_URL}/${ticketId}/channel`);
+    } catch (err) {
+      handleApiError(err, 'deleteTicketChannel');
+    }
+  },
+
+  async getTicketMetrics(): Promise<any> {
+    try {
+      const response = await axios.get(`${TICKETS_URL}/metrics/stats`);
+      return response.data;
+    } catch (err) {
+      handleApiError(err, 'getTicketMetrics');
     }
   },
 };

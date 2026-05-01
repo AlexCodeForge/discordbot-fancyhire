@@ -15,6 +15,7 @@ import path from 'path';
 import { config } from './config';
 import { syncAllChannels, buildChannelSyncPayload, isSyncableChannelType } from './events/channelSync';
 import { buildChannelIncomingPayload } from './events/channelMessageSync';
+import { TicketChannelService } from './services/ticketChannelService';
 
 const BOT_STATUS_FILE = path.join(__dirname, '../../api/.bot-status.json');
 
@@ -142,6 +143,83 @@ const syncDMChannel = async (channel: DMChannel, discordId: string): Promise<num
   }
 };
 
+const syncTicketChannel = async (channelId: string): Promise<number> => {
+  try {
+    const channel = await client.channels.fetch(channelId);
+    if (!channel || !channel.isTextBased() || !('name' in channel)) {
+      return 0;
+    }
+
+    const channelName = channel.name;
+    if (!channelName.startsWith('ticket-')) {
+      return 0;
+    }
+
+    console.log(`[TICKET-SYNC] Sincronizando canal ${channelName}...`);
+
+    let allMessages: any[] = [];
+    let lastMessageId: string | undefined;
+    let hasMore = true;
+
+    while (hasMore) {
+      const fetchOptions: any = { limit: 100 };
+      if (lastMessageId) {
+        fetchOptions.before = lastMessageId;
+      }
+
+      const messages = await channel.messages.fetch(fetchOptions);
+      
+      if (messages.size === 0) {
+        hasMore = false;
+        break;
+      }
+
+      allMessages.push(...Array.from(messages.values()));
+      lastMessageId = messages.last()?.id;
+
+      if (messages.size < 100) {
+        hasMore = false;
+      }
+
+      await new Promise(resolve => setTimeout(resolve, 200));
+    }
+
+    const sortedMessages = allMessages.sort((a, b) => a.createdTimestamp - b.createdTimestamp);
+    let syncedCount = 0;
+
+    for (const msg of sortedMessages) {
+      if (msg.author.bot && msg.author.id === client.user?.id) {
+        continue;
+      }
+
+      try {
+        await axios.post(`${config.apiUrl}/api/tickets/messages/incoming`, {
+          discord_channel_id: channelId,
+          discord_message_id: msg.id,
+          author_id: msg.author.id,
+          author_name: msg.author.tag,
+          content: msg.content,
+          sent_at: msg.createdAt.toISOString()
+        });
+        syncedCount++;
+      } catch (error: any) {
+        if (error.response?.status !== 200 && error.response?.data?.message !== 'Mensaje ya registrado') {
+          console.error(`[TICKET-SYNC] Error sincronizando mensaje ${msg.id}:`, error.response?.data || error.message);
+        }
+      }
+    }
+
+    if (syncedCount > 0) {
+      console.log(`[TICKET-SYNC] ✓ Sincronizados ${syncedCount} mensajes de ${allMessages.length} totales en ${channelName}`);
+    }
+
+    return syncedCount;
+  } catch (error) {
+    console.error(`[TICKET-SYNC] Error sincronizando canal ${channelId}:`, error);
+    return 0;
+  }
+};
+
 const syncAllDMs = async (): Promise<void> => {
   try {
     console.log('Iniciando sincronización de todos los DMs...');
@@ -184,6 +262,11 @@ const syncAllDMs = async (): Promise<void> => {
   }
 };
 
+const botHttpServer = express();
+botHttpServer.use(express.json());
+
+const ticketService = new TicketChannelService(client);
+
 client.once(Events.ClientReady, async (c) => {
   console.log(`Bot conectado como ${c.user.tag}`);
   console.log(`Monitoreando ${c.guilds.cache.size} servidor(es)`);
@@ -196,6 +279,21 @@ client.once(Events.ClientReady, async (c) => {
   await syncAllDMs();
 
   await syncAllChannels(client);
+
+  console.log('[TICKET-SYNC] Sincronizando tickets existentes...');
+  const guilds = client.guilds.cache;
+  for (const [, guild] of guilds) {
+    const channels = guild.channels.cache.filter(ch => 
+      'name' in ch && ch.name.startsWith('ticket-')
+    );
+    
+    for (const [, channel] of channels) {
+      await syncTicketChannel(channel.id);
+      await new Promise(resolve => setTimeout(resolve, 500));
+    }
+  }
+
+  console.log('Ticket service initialized');
 
   setInterval(() => {
     updateBotStatus(true, c.user.tag);
@@ -336,6 +434,26 @@ client.on(Events.MessageCreate, async (message) => {
   }
 
   if (message.guild && message.channel.isTextBased()) {
+    const channelName = 'name' in message.channel ? message.channel.name : '';
+    
+    if (channelName.startsWith('ticket-')) {
+      console.log(`[TICKET] Mensaje recibido en ${channelName} de ${message.author.tag}`);
+      try {
+        const response = await axios.post(`${config.apiUrl}/api/tickets/messages/incoming`, {
+          discord_channel_id: message.channel.id,
+          discord_message_id: message.id,
+          author_id: message.author.id,
+          author_name: message.author.tag,
+          content: message.content,
+          sent_at: message.createdAt.toISOString()
+        });
+        console.log(`[TICKET] Mensaje guardado en BD: ${message.id}`);
+      } catch (error: any) {
+        console.error('[TICKET] Error guardando mensaje:', error.response?.data || error.message);
+      }
+      return;
+    }
+
     try {
       await axios.post(
         `${config.apiUrl}/api/channels/messages/incoming`,
@@ -413,9 +531,6 @@ function parseChannelTypeInput(type: unknown): ChannelType {
   }
   return ChannelType.GuildText;
 }
-
-const botHttpServer = express();
-botHttpServer.use(express.json());
 
 botHttpServer.post('/send-dm', async (req, res) => {
   const { discordId, content } = req.body;
@@ -536,12 +651,30 @@ botHttpServer.post('/send-channel-message', async (req, res) => {
       content: String(content),
       allowedMentions: { users: Array.isArray(mentions) ? mentions : [] },
     });
+
+    if ('name' in ch && ch.name.startsWith('ticket-')) {
+      try {
+        console.log('[TICKET] Sincronizando mensaje enviado desde web:', sent.id);
+        const response = await axios.post(`${config.apiUrl}/api/tickets/messages/incoming`, {
+          discord_channel_id: channelId,
+          discord_message_id: sent.id,
+          author_id: client.user!.id,
+          author_name: 'Admin CRM',
+          content: String(content),
+          sent_at: sent.createdAt.toISOString()
+        });
+        console.log('[TICKET] Mensaje sincronizado correctamente:', response.status);
+      } catch (syncError: any) {
+        console.error('[TICKET] Error sincronizando mensaje del bot:', syncError.response?.data || syncError.message);
+      }
+    }
+
     res.json({ success: true, discord_message_id: sent.id });
   } catch (error) {
     console.error('Error en send-channel-message:', error);
     res.status(500).json({
       error: 'Error al enviar mensaje al canal',
-      message: error instanceof Error ? error.message : 'Error desconocido',
+      message: error instanceof Error ? error.message : 'Unknown error'
     });
   }
 });
@@ -622,6 +755,82 @@ botHttpServer.delete('/delete-channel', async (req, res) => {
     res.status(500).json({
       error: 'Error al eliminar canal',
       message: error instanceof Error ? error.message : 'Error desconocido',
+    });
+  }
+});
+
+botHttpServer.post('/create-ticket', async (req, res) => {
+  const { leadName, leadDiscordId, assignedTo } = req.body;
+
+  if (!leadName || !leadDiscordId) {
+    return res.status(400).json({ error: 'leadName and leadDiscordId are required' });
+  }
+
+  try {
+    const result = await ticketService.createTicketChannel(leadName, leadDiscordId, assignedTo);
+    res.json(result);
+  } catch (error) {
+    console.error('Error creating ticket:', error);
+    res.status(500).json({
+      error: 'Error creating ticket',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+botHttpServer.post('/close-ticket', async (req, res) => {
+  const { channelId } = req.body;
+
+  if (!channelId) {
+    return res.status(400).json({ error: 'channelId is required' });
+  }
+
+  try {
+    await ticketService.closeTicketChannel(channelId);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error closing ticket:', error);
+    res.status(500).json({
+      error: 'Error closing ticket',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+botHttpServer.post('/transfer-ticket', async (req, res) => {
+  const { channelId, newUserId, oldUserId } = req.body;
+
+  if (!channelId || !newUserId) {
+    return res.status(400).json({ error: 'channelId and newUserId are required' });
+  }
+
+  try {
+    await ticketService.transferTicket(channelId, newUserId, oldUserId);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error transferring ticket:', error);
+    res.status(500).json({
+      error: 'Error transferring ticket',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+botHttpServer.delete('/delete-ticket-channel/:channelId', async (req, res) => {
+  const { channelId } = req.params;
+
+  if (!channelId) {
+    return res.status(400).json({ error: 'channelId is required' });
+  }
+
+  try {
+    await ticketService.deleteChannel(channelId);
+    res.json({ success: true, message: 'Ticket channel deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting ticket channel:', error);
+    res.status(500).json({
+      error: 'Error deleting ticket channel',
+      message: error instanceof Error ? error.message : 'Unknown error'
     });
   }
 });

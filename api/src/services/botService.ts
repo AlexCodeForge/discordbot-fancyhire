@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { Logger } from '../utils/Logger';
 
 const BOT_URL = process.env.BOT_URL || 'http://127.0.0.1:3005';
 
@@ -23,6 +24,97 @@ export class BotService {
         throw new Error(errorMsg);
       }
       console.error(`[BotService] Error desconocido:`, error);
+      throw error;
+    }
+  }
+
+  static async createTicket(leadName: string, leadDiscordId: string, assignedTo?: string): Promise<{ channel_id: string }> {
+    Logger.info('Creating ticket channel', { leadName, leadDiscordId });
+    
+    try {
+      const response = await axios.post(`${BOT_URL}/create-ticket`, {
+        leadName,
+        leadDiscordId,
+        assignedTo
+      }, {
+        timeout: 10000
+      });
+      
+      Logger.info('Ticket channel created', { channelId: response.data.channel_id });
+      return response.data;
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        const errorMsg = error.response?.data?.message || error.message || 'Error creating ticket';
+        Logger.error('Error creating ticket channel', { leadName }, new Error(errorMsg));
+        throw new Error(errorMsg);
+      }
+      Logger.error('Unknown error creating ticket', { leadName }, error as Error);
+      throw error;
+    }
+  }
+
+  static async closeTicket(channelId: string): Promise<void> {
+    Logger.info('Closing ticket channel', { channelId });
+    
+    try {
+      await axios.post(`${BOT_URL}/close-ticket`, {
+        channelId
+      }, {
+        timeout: 10000
+      });
+      
+      Logger.info('Ticket channel closed', { channelId });
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        const errorMsg = error.response?.data?.message || error.message || 'Error closing ticket';
+        Logger.error('Error closing ticket channel', { channelId }, new Error(errorMsg));
+        throw new Error(errorMsg);
+      }
+      Logger.error('Unknown error closing ticket', { channelId }, error as Error);
+      throw error;
+    }
+  }
+
+  static async transferTicket(channelId: string, newUserId: string, oldUserId?: string): Promise<void> {
+    Logger.info('Transferring ticket', { channelId, newUserId, oldUserId });
+    
+    try {
+      await axios.post(`${BOT_URL}/transfer-ticket`, {
+        channelId,
+        newUserId,
+        oldUserId
+      }, {
+        timeout: 10000
+      });
+      
+      Logger.info('Ticket transferred', { channelId, newUserId });
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        const errorMsg = error.response?.data?.message || error.message || 'Error transferring ticket';
+        Logger.error('Error transferring ticket', { channelId }, new Error(errorMsg));
+        throw new Error(errorMsg);
+      }
+      Logger.error('Unknown error transferring ticket', { channelId }, error as Error);
+      throw error;
+    }
+  }
+
+  static async deleteTicketChannel(channelId: string): Promise<void> {
+    Logger.info('Deleting ticket channel', { channelId });
+    
+    try {
+      await axios.delete(`${BOT_URL}/delete-ticket-channel/${channelId}`, {
+        timeout: 10000
+      });
+      
+      Logger.info('Ticket channel deleted', { channelId });
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        const errorMsg = error.response?.data?.message || error.message || 'Error deleting ticket channel';
+        Logger.error('Error deleting ticket channel', { channelId }, new Error(errorMsg));
+        throw new Error(errorMsg);
+      }
+      Logger.error('Unknown error deleting ticket channel', { channelId }, error as Error);
       throw error;
     }
   }

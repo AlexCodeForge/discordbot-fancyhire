@@ -4,11 +4,41 @@ import {
   useMemo,
   useRef,
   useState,
+  Component,
   type KeyboardEvent,
   type ReactNode,
 } from 'react';
 import { Channel } from '../types/Channel';
 import { ChannelMessage } from '../types/ChannelMessage';
+import { MemberMentionInput } from './MemberMentionInput';
+import { MemberAvatar } from './MemberAvatar';
+import { RoleBadge } from './RoleBadge';
+import { api, type DiscordMember } from '../services/api';
+
+class ErrorBoundary extends Component<
+  { children: ReactNode; fallback: ReactNode },
+  { hasError: boolean }
+> {
+  constructor(props: { children: ReactNode; fallback: ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: Error, errorInfo: unknown) {
+    console.error('ErrorBoundary caught an error:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return this.props.fallback;
+    }
+    return this.props.children;
+  }
+}
 
 const MAX_LENGTH = 2000;
 const COUNTER_THRESHOLD = 1800;
@@ -47,40 +77,32 @@ function formatMessageTime(iso: string): string {
   });
 }
 
-function renderMessageContent(content: string): ReactNode {
-  const nodes: ReactNode[] = [];
-  const re = new RegExp(MENTION_RE.source, 'g');
-  let last = 0;
-  let m: RegExpExecArray | null;
-  let key = 0;
-  while ((m = re.exec(content)) !== null) {
-    if (m.index > last) {
-      nodes.push(
-        <span key={`t-${key++}`}>{content.slice(last, m.index)}</span>
-      );
-    }
-    const full = m[0];
-    nodes.push(
-      <span
-        key={`m-${key++}`}
-        className="bmw-body-sm px-0.5"
-        style={{
-          backgroundColor: 'var(--bmw-primary)',
-          color: 'var(--bmw-on-primary)',
-          transition: 'background-color 0.2s ease, color 0.2s ease',
-          borderRadius: 0,
-        }}
-      >
-        {full}
-      </span>
-    );
-    last = m.index + full.length;
-  }
-  if (last < content.length) {
-    nodes.push(<span key={`t-${key++}`}>{content.slice(last)}</span>);
-  }
-  return nodes.length > 0 ? nodes : content;
+function formatFullDate(dateString: string | null): string {
+  if (!dateString) return '-';
+  return new Date(dateString).toLocaleString('es-ES', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
 }
+
+function formatRelativeDate(dateString: string | null): string {
+  if (!dateString) return '-';
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  if (diffDays === 0) return 'Hoy';
+  if (diffDays === 1) return 'Ayer';
+  if (diffDays < 7) return `Hace ${diffDays} días`;
+  if (diffDays < 30) return `Hace ${diffDays} días`;
+  if (diffDays < 365) return `Hace ${Math.floor(diffDays / 30)} meses`;
+  return `Hace ${Math.floor(diffDays / 365)} años`;
+}
+
+// Esta función ya no se usa, se reemplazó por renderMentionContent dentro del componente
 
 function DeleteIcon() {
   return (
@@ -102,6 +124,25 @@ function DeleteIcon() {
   );
 }
 
+function EyeIcon() {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+  );
+}
+
 export function ChannelChat({
   channel,
   messages,
@@ -112,6 +153,9 @@ export function ChannelChat({
 }: ChannelChatProps) {
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
+  const [mentions, setMentions] = useState<string[]>([]);
+  const [members, setMembers] = useState<DiscordMember[]>([]);
+  const [viewingMember, setViewingMember] = useState<DiscordMember | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const endRef = useRef<HTMLDivElement>(null);
 
@@ -126,9 +170,28 @@ export function ChannelChat({
     endRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, []);
 
+  // Solo hacer scroll al cargar inicialmente los mensajes
+  const prevMessagesLengthRef = useRef(sortedMessages.length);
+  
   useEffect(() => {
-    scrollToBottom();
+    // Si hay nuevos mensajes (aumentó la cantidad), hacer scroll
+    if (sortedMessages.length > prevMessagesLengthRef.current) {
+      scrollToBottom();
+    }
+    prevMessagesLengthRef.current = sortedMessages.length;
   }, [sortedMessages, scrollToBottom]);
+
+  useEffect(() => {
+    api
+      .getMembers()
+      .then((data) => {
+        setMembers(Array.isArray(data) ? data : []);
+      })
+      .catch((error) => {
+        console.error('Error loading members:', error);
+        setMembers([]);
+      });
+  }, []);
 
   const showDeleteFor = useCallback(
     (msg: ChannelMessage) => {
@@ -145,20 +208,73 @@ export function ChannelChat({
 
     setSending(true);
     try {
-      const mentions = extractMentionIds(draft);
       await onSendMessage(trimmed, mentions);
       setDraft('');
+      setMentions([]);
     } finally {
       setSending(false);
     }
   };
 
-  const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      void handleSend();
+  const handleViewMember = (authorId: string) => {
+    const member = members.find((m) => m.id === authorId);
+    if (member) {
+      setViewingMember(member);
     }
   };
+
+  const hasPermission = (perm: string): boolean => {
+    return viewingMember?.permissions?.[perm] === true;
+  };
+
+  const renderMentionContent = useCallback(
+    (content: string): ReactNode => {
+      const nodes: ReactNode[] = [];
+      const re = new RegExp(MENTION_RE.source, 'g');
+      let last = 0;
+      let m: RegExpExecArray | null;
+      let key = 0;
+      while ((m = re.exec(content)) !== null) {
+        if (m.index > last) {
+          nodes.push(
+            <span key={`t-${key++}`}>{content.slice(last, m.index)}</span>
+          );
+        }
+        const userId = m[1];
+        const member = members.find((mem) => mem.id === userId);
+        const displayName = member ? `@${member.display_name}` : m[0];
+        
+        nodes.push(
+          <span
+            key={`m-${key++}`}
+            className="bmw-body-sm px-1 cursor-pointer hover:underline"
+            style={{
+              backgroundColor: 'var(--bmw-primary)',
+              color: 'var(--bmw-on-primary)',
+              transition: 'opacity 0.2s ease',
+              borderRadius: '2px',
+            }}
+            onClick={() => handleViewMember(userId)}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.opacity = '0.8';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.opacity = '1';
+            }}
+            title={member ? `Ver detalles de ${member.display_name}` : userId}
+          >
+            {displayName}
+          </span>
+        );
+        last = m.index + m[0].length;
+      }
+      if (last < content.length) {
+        nodes.push(<span key={`t-${key++}`}>{content.slice(last)}</span>);
+      }
+      return nodes.length > 0 ? nodes : content;
+    },
+    [members]
+  );
 
   return (
     <div
@@ -237,15 +353,15 @@ export function ChannelChat({
                     </p>
                   ) : (
                     <div className="bmw-body-sm mt-1 whitespace-pre-wrap break-words">
-                      {renderMessageContent(msg.content)}
+                      {renderMentionContent(msg.content)}
                     </div>
                   )}
                 </div>
-                {showDeleteFor(msg) && (
+                <div className="absolute right-2 top-2 flex gap-1 opacity-0 transition-opacity duration-200 group-hover:opacity-100">
                   <button
                     type="button"
-                    onClick={() => onDeleteMessage(msg.discord_message_id)}
-                    className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center opacity-0 transition-opacity duration-200 group-hover:opacity-100"
+                    onClick={() => handleViewMember(msg.author_id)}
+                    className="flex h-8 w-8 items-center justify-center"
                     style={{
                       color: 'var(--bmw-muted)',
                       backgroundColor: 'transparent',
@@ -253,18 +369,42 @@ export function ChannelChat({
                       cursor: 'pointer',
                       borderRadius: 0,
                     }}
-                    title="Eliminar mensaje"
-                    aria-label="Eliminar mensaje"
+                    title="Ver detalles del usuario"
+                    aria-label="Ver detalles del usuario"
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.color = 'var(--bmw-error)';
+                      e.currentTarget.style.color = 'var(--bmw-primary)';
                     }}
                     onMouseLeave={(e) => {
                       e.currentTarget.style.color = 'var(--bmw-muted)';
                     }}
                   >
-                    <DeleteIcon />
+                    <EyeIcon />
                   </button>
-                )}
+                  {showDeleteFor(msg) && (
+                    <button
+                      type="button"
+                      onClick={() => onDeleteMessage(msg.discord_message_id)}
+                      className="flex h-8 w-8 items-center justify-center"
+                      style={{
+                        color: 'var(--bmw-muted)',
+                        backgroundColor: 'transparent',
+                        border: 'none',
+                        cursor: 'pointer',
+                        borderRadius: 0,
+                      }}
+                      title="Eliminar mensaje"
+                      aria-label="Eliminar mensaje"
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.color = 'var(--bmw-error)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.color = 'var(--bmw-muted)';
+                      }}
+                    >
+                      <DeleteIcon />
+                    </button>
+                  )}
+                </div>
               </article>
             );
           })
@@ -280,41 +420,490 @@ export function ChannelChat({
           padding: 16,
         }}
       >
-        <div className="flex gap-2">
-          <textarea
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Escribe un mensaje..."
-            disabled={sending}
-            maxLength={MAX_LENGTH}
-            rows={3}
-            className="bmw-input min-h-[80px] flex-1 resize-none"
-            style={{ height: 'auto', minHeight: '80px' }}
-            aria-label="Escribe un mensaje"
-          />
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            void handleSend();
+          }}
+          className="flex gap-2 items-end"
+        >
+          <div className="flex-1">
+            <ErrorBoundary
+              fallback={
+                <textarea
+                  value={draft}
+                  onChange={(e) => setDraft(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      void handleSend();
+                    }
+                  }}
+                  placeholder="Escribe un mensaje..."
+                  disabled={sending}
+                  maxLength={MAX_LENGTH}
+                  rows={4}
+                  className="bmw-input min-h-[120px] w-full resize-y"
+                />
+              }
+            >
+              <MemberMentionInput
+                value={draft}
+                onChange={(value, mentionIds) => {
+                  setDraft(value);
+                  setMentions(mentionIds);
+                }}
+                placeholder="Escribe un mensaje... (usa @ para mencionar)"
+                maxLength={MAX_LENGTH}
+                disabled={sending}
+              />
+            </ErrorBoundary>
+          </div>
           <button
-            type="button"
-            onClick={() => void handleSend()}
+            type="submit"
             disabled={sending || !draft.trim() || draft.length > MAX_LENGTH}
-            className="bmw-btn-primary self-end shrink-0 transition-opacity duration-200"
-            style={{ height: 48 }}
+            className="bmw-btn-primary shrink-0 transition-opacity duration-200"
+            style={{ height: 48, marginBottom: 4 }}
           >
             {sending ? 'Enviando...' : 'Enviar'}
           </button>
-        </div>
-        {draft.length > COUNTER_THRESHOLD && (
-          <p
-            className="bmw-body-xs mt-2 text-right transition-opacity duration-200"
+        </form>
+      </div>
+
+      {viewingMember && (
+        <div
+          className="fixed inset-0 flex items-center justify-center p-4 z-50"
+          style={{
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          }}
+        >
+          <div
+            className="max-w-3xl w-full max-h-[90vh] overflow-auto"
             style={{
-              color:
-                draft.length >= MAX_LENGTH ? 'var(--bmw-error)' : 'var(--bmw-muted)',
+              backgroundColor: 'var(--bmw-surface-card)',
+              borderRadius: '0',
+              border: '1px solid var(--bmw-hairline)',
             }}
           >
-            {draft.length}/{MAX_LENGTH}
-          </p>
-        )}
-      </div>
+            <div className="p-6">
+              <div className="flex justify-between items-start mb-6">
+                <h2
+                  style={{
+                    fontSize: '32px',
+                    lineHeight: '1.15',
+                    fontWeight: 700,
+                    color: 'var(--bmw-ink)',
+                  }}
+                >
+                  Detalles del Miembro
+                </h2>
+                <button
+                  onClick={() => setViewingMember(null)}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: 'var(--bmw-muted)',
+                    cursor: 'pointer',
+                  }}
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
+              </div>
+
+              <div
+                className="flex items-start gap-6 mb-6 pb-6"
+                style={{ borderBottom: '1px solid var(--bmw-hairline)' }}
+              >
+                <MemberAvatar
+                  avatar={viewingMember.avatar}
+                  username={viewingMember.username}
+                  id={viewingMember.id}
+                  size={80}
+                />
+                <div className="flex-1">
+                  <h3
+                    style={{
+                      fontSize: '24px',
+                      lineHeight: '1.25',
+                      fontWeight: 700,
+                      color: 'var(--bmw-ink)',
+                      marginBottom: '4px',
+                    }}
+                  >
+                    {viewingMember.display_name}
+                  </h3>
+                  <p className="bmw-body-sm" style={{ color: 'var(--bmw-muted)', marginBottom: '8px' }}>
+                    {viewingMember.tag}
+                  </p>
+                  <div className="bmw-body-sm" style={{ color: 'var(--bmw-body)' }}>
+                    <span style={{ color: 'var(--bmw-muted)' }}>ID:</span> {viewingMember.id}
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-6">
+                <div className="grid grid-cols-2 gap-6">
+                  <div>
+                    <label className="bmw-label block mb-2">Nombre de Usuario</label>
+                    <div className="bmw-body-sm" style={{ color: 'var(--bmw-ink)' }}>
+                      {viewingMember.username}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="bmw-label block mb-2">Nombre en Servidor</label>
+                    <div className="bmw-body-sm" style={{ color: 'var(--bmw-ink)' }}>
+                      {viewingMember.display_name}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-6">
+                  <div>
+                    <label className="bmw-label block mb-2">Ingreso al Servidor</label>
+                    <div className="bmw-body-sm" style={{ color: 'var(--bmw-ink)' }}>
+                      {formatFullDate(viewingMember.joined_at)}
+                    </div>
+                    <div
+                      className="bmw-body-sm"
+                      style={{ color: 'var(--bmw-muted)', fontSize: '12px', marginTop: '4px' }}
+                    >
+                      {formatRelativeDate(viewingMember.joined_at)}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="bmw-label block mb-2">Cuenta Creada</label>
+                    <div className="bmw-body-sm" style={{ color: 'var(--bmw-ink)' }}>
+                      {formatFullDate(viewingMember.created_at)}
+                    </div>
+                    <div
+                      className="bmw-body-sm"
+                      style={{ color: 'var(--bmw-muted)', fontSize: '12px', marginTop: '4px' }}
+                    >
+                      {formatRelativeDate(viewingMember.created_at)}
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="bmw-label block mb-2">Roles ({viewingMember.roles?.length || 0})</label>
+                  {(viewingMember.roles?.length || 0) > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                      {viewingMember.roles?.map((role) => (
+                        <RoleBadge key={role.id} role={role} />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="bmw-body-sm" style={{ color: 'var(--bmw-muted)' }}>
+                      Sin roles asignados
+                    </div>
+                  )}
+                </div>
+
+                <div>
+                  <label className="bmw-label block mb-3">Permisos</label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div
+                      className="flex items-center gap-3 p-3"
+                      style={{
+                        backgroundColor: viewingMember.permissions?.administrator
+                          ? 'var(--bmw-surface-soft)'
+                          : 'transparent',
+                        border: '1px solid var(--bmw-hairline)',
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: '32px',
+                          height: '32px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: viewingMember.permissions?.administrator
+                            ? 'var(--bmw-primary)'
+                            : 'var(--bmw-muted)',
+                        }}
+                      >
+                        <svg
+                          width="20"
+                          height="20"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                        >
+                          <path d="M12 2L2 7l10 5 10-5-10-5z" />
+                          <path d="M2 17l10 5 10-5M2 12l10 5 10-5" />
+                        </svg>
+                      </div>
+                      <div>
+                        <div className="bmw-body-sm" style={{ fontWeight: 500, color: 'var(--bmw-ink)' }}>
+                          Administrator
+                        </div>
+                        <div
+                          className="bmw-body-sm"
+                          style={{ fontSize: '12px', color: 'var(--bmw-muted)' }}
+                        >
+                          {viewingMember.permissions?.administrator ? 'Sí' : 'No'}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div
+                      className="flex items-center gap-3 p-3"
+                      style={{
+                        backgroundColor: viewingMember.permissions?.manageGuild
+                          ? 'var(--bmw-surface-soft)'
+                          : 'transparent',
+                        border: '1px solid var(--bmw-hairline)',
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: '32px',
+                          height: '32px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: viewingMember.permissions?.manageGuild
+                            ? 'var(--bmw-primary)'
+                            : 'var(--bmw-muted)',
+                        }}
+                      >
+                        <svg
+                          width="20"
+                          height="20"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                        >
+                          <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+                        </svg>
+                      </div>
+                      <div>
+                        <div className="bmw-body-sm" style={{ fontWeight: 500, color: 'var(--bmw-ink)' }}>
+                          Manage Server
+                        </div>
+                        <div
+                          className="bmw-body-sm"
+                          style={{ fontSize: '12px', color: 'var(--bmw-muted)' }}
+                        >
+                          {viewingMember.permissions?.manageGuild ? 'Sí' : 'No'}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div
+                      className="flex items-center gap-3 p-3"
+                      style={{
+                        backgroundColor: viewingMember.permissions?.manageRoles
+                          ? 'var(--bmw-surface-soft)'
+                          : 'transparent',
+                        border: '1px solid var(--bmw-hairline)',
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: '32px',
+                          height: '32px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: viewingMember.permissions?.manageRoles
+                            ? 'var(--bmw-primary)'
+                            : 'var(--bmw-muted)',
+                        }}
+                      >
+                        <svg
+                          width="20"
+                          height="20"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                        >
+                          <circle cx="12" cy="12" r="10" />
+                          <path d="M12 6v6l4 2" />
+                        </svg>
+                      </div>
+                      <div>
+                        <div className="bmw-body-sm" style={{ fontWeight: 500, color: 'var(--bmw-ink)' }}>
+                          Manage Roles
+                        </div>
+                        <div
+                          className="bmw-body-sm"
+                          style={{ fontSize: '12px', color: 'var(--bmw-muted)' }}
+                        >
+                          {viewingMember.permissions?.manageRoles ? 'Sí' : 'No'}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div
+                      className="flex items-center gap-3 p-3"
+                      style={{
+                        backgroundColor: viewingMember.permissions?.manageChannels
+                          ? 'var(--bmw-surface-soft)'
+                          : 'transparent',
+                        border: '1px solid var(--bmw-hairline)',
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: '32px',
+                          height: '32px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: viewingMember.permissions?.manageChannels
+                            ? 'var(--bmw-primary)'
+                            : 'var(--bmw-muted)',
+                        }}
+                      >
+                        <svg
+                          width="20"
+                          height="20"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                        >
+                          <path d="M21 10c0-7-9-7-9-7s-9 0-9 7c0 3 0 7 9 7s9-4 9-7z" />
+                          <circle cx="12" cy="10" r="3" />
+                        </svg>
+                      </div>
+                      <div>
+                        <div className="bmw-body-sm" style={{ fontWeight: 500, color: 'var(--bmw-ink)' }}>
+                          Manage Channels
+                        </div>
+                        <div
+                          className="bmw-body-sm"
+                          style={{ fontSize: '12px', color: 'var(--bmw-muted)' }}
+                        >
+                          {viewingMember.permissions?.manageChannels ? 'Sí' : 'No'}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div
+                      className="flex items-center gap-3 p-3"
+                      style={{
+                        backgroundColor: viewingMember.permissions?.kickMembers
+                          ? 'var(--bmw-surface-soft)'
+                          : 'transparent',
+                        border: '1px solid var(--bmw-hairline)',
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: '32px',
+                          height: '32px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: viewingMember.permissions?.kickMembers
+                            ? 'var(--bmw-primary)'
+                            : 'var(--bmw-muted)',
+                        }}
+                      >
+                        <svg
+                          width="20"
+                          height="20"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                        >
+                          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                          <polyline points="16 17 21 12 16 7" />
+                          <line x1="21" y1="12" x2="9" y2="12" />
+                        </svg>
+                      </div>
+                      <div>
+                        <div className="bmw-body-sm" style={{ fontWeight: 500, color: 'var(--bmw-ink)' }}>
+                          Kick Members
+                        </div>
+                        <div
+                          className="bmw-body-sm"
+                          style={{ fontSize: '12px', color: 'var(--bmw-muted)' }}
+                        >
+                          {viewingMember.permissions?.kickMembers ? 'Sí' : 'No'}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div
+                      className="flex items-center gap-3 p-3"
+                      style={{
+                        backgroundColor: viewingMember.permissions?.banMembers
+                          ? 'var(--bmw-surface-soft)'
+                          : 'transparent',
+                        border: '1px solid var(--bmw-hairline)',
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: '32px',
+                          height: '32px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: viewingMember.permissions?.banMembers
+                            ? 'var(--bmw-primary)'
+                            : 'var(--bmw-muted)',
+                        }}
+                      >
+                        <svg
+                          width="20"
+                          height="20"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                        >
+                          <circle cx="12" cy="12" r="10" />
+                          <line x1="4.93" y1="4.93" x2="19.07" y2="19.07" />
+                        </svg>
+                      </div>
+                      <div>
+                        <div className="bmw-body-sm" style={{ fontWeight: 500, color: 'var(--bmw-ink)' }}>
+                          Ban Members
+                        </div>
+                        <div
+                          className="bmw-body-sm"
+                          style={{ fontSize: '12px', color: 'var(--bmw-muted)' }}
+                        >
+                          {viewingMember.permissions?.banMembers ? 'Sí' : 'No'}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div
+                className="mt-6 pt-6 flex justify-end"
+                style={{ borderTop: '1px solid var(--bmw-hairline)' }}
+              >
+                <button
+                  onClick={() => setViewingMember(null)}
+                  className="bmw-btn-primary"
+                  style={{ height: '40px', padding: '8px 24px' }}
+                >
+                  Cerrar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
