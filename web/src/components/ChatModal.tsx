@@ -80,7 +80,7 @@ export function ChatModal({ lead, onClose }: ChatModalProps) {
         backgroundColor: 'rgba(0, 0, 0, 0.5)'
       }}>
         <div className="max-w-md w-full p-6" style={{ 
-          backgroundColor: 'var(--bmw-canvas)',
+          backgroundColor: 'var(--bmw-surface-card)',
           borderRadius: '0',
           border: '1px solid var(--bmw-hairline)'
         }}>
@@ -120,7 +120,7 @@ export function ChatModal({ lead, onClose }: ChatModalProps) {
       backgroundColor: 'rgba(0, 0, 0, 0.5)'
     }}>
       <div className="max-w-4xl w-full h-[80vh] flex flex-col" style={{ 
-        backgroundColor: 'var(--bmw-canvas)',
+        backgroundColor: 'var(--bmw-surface-card)',
         borderRadius: '0',
         border: '1px solid var(--bmw-hairline)'
       }}>
@@ -162,7 +162,8 @@ export function ChatModal({ lead, onClose }: ChatModalProps) {
                     borderRadius: '0',
                     backgroundColor: msg.sender_type === 'admin' ? 'var(--bmw-primary)' : 'var(--bmw-canvas)',
                     color: msg.sender_type === 'admin' ? 'var(--bmw-on-primary)' : 'var(--bmw-ink)',
-                    border: msg.sender_type === 'admin' ? 'none' : '1px solid var(--bmw-hairline)'
+                    border: msg.sender_type === 'admin' ? 'none' : '1px solid var(--bmw-hairline)',
+                    boxShadow: msg.sender_type === 'admin' ? 'none' : '0 1px 2px rgba(0, 0, 0, 0.05)'
                   }}
                 >
                   <div className="bmw-body-sm mb-1" style={{ 
@@ -203,7 +204,7 @@ export function ChatModal({ lead, onClose }: ChatModalProps) {
 
         <div className="p-4" style={{ 
           borderTop: '1px solid var(--bmw-hairline)',
-          backgroundColor: 'var(--bmw-canvas)'
+          backgroundColor: 'var(--bmw-surface-card)'
         }}>
           <div className="flex gap-2">
             <textarea

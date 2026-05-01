@@ -9,13 +9,13 @@ interface KanbanColumnProps {
   onLeadClick: (lead: Lead) => void;
 }
 
-const STAGE_COLORS: Record<LeadStage, { bg: string; border: string }> = {
-  nuevo: { bg: '#fafafa', border: '#cccccc' },
-  contactado: { bg: '#f0f7ff', border: '#94c5f7' },
-  propuesta_enviada: { bg: '#fffbf0', border: '#fcd34d' },
-  negociacion: { bg: '#fff5f0', border: '#fdba74' },
-  ganado: { bg: '#f0fdf5', border: '#86efac' },
-  perdido: { bg: '#fef5f5', border: '#fca5a5' },
+const STAGE_COLORS: Record<LeadStage, { bgVar: string; borderVar: string }> = {
+  nuevo: { bgVar: 'var(--bmw-surface-card)', borderVar: 'var(--bmw-hairline-strong)' },
+  contactado: { bgVar: 'var(--bmw-surface-card)', borderVar: 'var(--bmw-primary)' },
+  propuesta_enviada: { bgVar: 'var(--bmw-surface-card)', borderVar: 'var(--bmw-warning)' },
+  negociacion: { bgVar: 'var(--bmw-surface-card)', borderVar: '#fdba74' },
+  ganado: { bgVar: 'var(--bmw-surface-card)', borderVar: 'var(--bmw-success)' },
+  perdido: { bgVar: 'var(--bmw-surface-card)', borderVar: 'var(--bmw-error)' },
 };
 
 export function KanbanColumn({ stage, leads, onLeadClick }: KanbanColumnProps) {
@@ -31,9 +31,9 @@ export function KanbanColumn({ stage, leads, onLeadClick }: KanbanColumnProps) {
       <div style={{ 
         marginBottom: '16px', 
         padding: '12px', 
-        backgroundColor: stageColor.bg,
-        borderLeft: `4px solid ${stageColor.border}`,
-        border: `1px solid ${stageColor.border}`,
+        backgroundColor: stageColor.bgVar,
+        borderLeft: `4px solid ${stageColor.borderVar}`,
+        border: `1px solid ${stageColor.borderVar}`,
         borderRadius: '0'
       }}>
         <h2 className="bmw-title-sm" style={{ color: 'var(--bmw-ink)' }}>

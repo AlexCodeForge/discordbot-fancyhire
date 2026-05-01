@@ -23,11 +23,28 @@ export function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4" style={{ backgroundColor: 'var(--bmw-canvas)' }}>
+    <div className="min-h-screen flex items-center justify-center p-4" style={{ backgroundColor: 'var(--bmw-surface-soft)' }}>
       <div className="w-full max-w-md">
         <div className="bmw-card">
           <div className="text-center mb-8">
-            <h1 style={{ fontSize: '48px', lineHeight: '1.1', marginBottom: '16px' }}>CRM Leads</h1>
+            <div 
+              style={{
+                width: '56px',
+                height: '56px',
+                backgroundColor: 'var(--bmw-primary)',
+                borderRadius: '0',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontWeight: 700,
+                color: 'var(--bmw-on-primary)',
+                fontSize: '24px',
+                margin: '0 auto 24px',
+              }}
+            >
+              C
+            </div>
+            <h1 style={{ fontSize: '32px', lineHeight: '1.15', fontWeight: 700, marginBottom: '8px', color: 'var(--bmw-ink)' }}>CRM Leads</h1>
             <p className="bmw-body-sm" style={{ color: 'var(--bmw-body)' }}>Ingresa tus credenciales para continuar</p>
           </div>
 

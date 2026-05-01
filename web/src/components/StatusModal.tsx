@@ -72,7 +72,7 @@ export const StatusModal = ({ onClose }: StatusModalProps) => {
       backgroundColor: 'rgba(0, 0, 0, 0.5)'
     }}>
       <div className="max-w-md w-full mx-4" style={{ 
-        backgroundColor: 'var(--bmw-canvas)',
+        backgroundColor: 'var(--bmw-surface-card)',
         borderRadius: '0',
         border: '1px solid var(--bmw-hairline)'
       }}>

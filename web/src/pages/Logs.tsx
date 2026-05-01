@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
 import { logsApi, SystemLog, LogStats } from '../services/logs';
-import { useAuth } from '../context/AuthContext';
+import { Layout } from '../components/Layout';
 
 const LEVELS = ['error', 'warning', 'info', 'debug'] as const;
 const LEVEL_COLORS = {
@@ -12,7 +11,6 @@ const LEVEL_COLORS = {
 };
 
 export function Logs() {
-  const { logout } = useAuth();
   const [logs, setLogs] = useState<SystemLog[]>([]);
   const [stats, setStats] = useState<LogStats | null>(null);
   const [selectedLevel, setSelectedLevel] = useState<string>('');
@@ -82,44 +80,29 @@ export function Logs() {
   const totalPages = Math.ceil(total / limit);
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: 'var(--bmw-surface-soft)' }}>
-      <header className="mb-6" style={{ 
-        backgroundColor: 'var(--bmw-canvas)', 
-        borderBottom: '1px solid var(--bmw-hairline)',
-        height: '64px'
-      }}>
-        <div className="max-w-screen-2xl mx-auto px-6 h-full">
-          <div className="flex justify-between items-center h-full">
+    <Layout>
+      <div style={{ padding: '32px' }}>
+        <div className="max-w-screen-2xl mx-auto">
+          <div style={{ marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div>
-              <h1 className="bmw-title-md" style={{ fontSize: '24px', lineHeight: '1.25' }}>System Logs</h1>
-              <p className="bmw-body-sm" style={{ color: 'var(--bmw-muted)', marginTop: '4px' }}>Total: {total} logs</p>
+              <p className="bmw-body-sm" style={{ color: 'var(--bmw-muted)', fontSize: '12px' }}>
+                Total: {total} logs
+              </p>
             </div>
-            <div className="flex gap-3">
-              <Link
-                to="/"
-                className="bmw-btn-secondary inline-flex items-center justify-center"
-              >
-                Volver al CRM
-              </Link>
-              <button
-                onClick={logout}
-                className="bmw-btn-secondary"
-                style={{ 
-                  backgroundColor: 'transparent',
-                  color: 'var(--bmw-error)',
-                  borderColor: 'var(--bmw-error)'
-                }}
-              >
-                Cerrar Sesión
-              </button>
-            </div>
+            <button
+              onClick={handleCleanup}
+              className="bmw-btn-secondary"
+              style={{ 
+                backgroundColor: 'transparent',
+                color: 'var(--bmw-error)',
+                borderColor: 'var(--bmw-error)'
+              }}
+            >
+              Limpiar Logs Antiguos
+            </button>
           </div>
-        </div>
-      </header>
 
-      <div className="max-w-screen-2xl mx-auto px-6" style={{ paddingTop: '24px', paddingBottom: '24px' }}>
-
-        {stats && (
+          {stats && (
           <div className="grid grid-cols-4 gap-4 mb-6">
             {stats.byLevel.map((stat) => {
               const colors = LEVEL_COLORS[stat.level as keyof typeof LEVEL_COLORS];
@@ -169,19 +152,6 @@ export function Logs() {
                   </option>
                 ))}
               </select>
-            </div>
-            <div className="ml-auto">
-              <button
-                onClick={handleCleanup}
-                className="bmw-btn-secondary"
-                style={{ 
-                  backgroundColor: 'transparent',
-                  color: 'var(--bmw-error)',
-                  borderColor: 'var(--bmw-error)'
-                }}
-              >
-                Limpiar Logs Antiguos
-              </button>
             </div>
           </div>
         </div>
@@ -312,6 +282,7 @@ export function Logs() {
             )}
           </>
         )}
+        </div>
       </div>
 
       {selectedLog && (
@@ -319,7 +290,7 @@ export function Logs() {
           backgroundColor: 'rgba(0, 0, 0, 0.5)'
         }}>
           <div className="max-w-3xl w-full max-h-[90vh] overflow-auto" style={{ 
-            backgroundColor: 'var(--bmw-canvas)',
+            backgroundColor: 'var(--bmw-surface-card)',
             borderRadius: '0',
             border: '1px solid var(--bmw-hairline)'
           }}>
@@ -422,6 +393,6 @@ export function Logs() {
           </div>
         </div>
       )}
-    </div>
+    </Layout>
   );
 }

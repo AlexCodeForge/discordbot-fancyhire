@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
 import {
   DndContext,
   DragEndEvent,
@@ -14,11 +13,9 @@ import { KanbanColumn } from './components/KanbanColumn';
 import { LeadCard } from './components/LeadCard';
 import { LeadModal } from './components/LeadModal';
 import { CreateLeadForm } from './components/CreateLeadForm';
-import { StatusPill } from './components/StatusPill';
-import { useAuth } from './context/AuthContext';
+import { Layout } from './components/Layout';
 
 function App() {
-  const { logout } = useAuth();
   const [leads, setLeads] = useState<Lead[]>([]);
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
@@ -82,83 +79,58 @@ function App() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen" style={{ backgroundColor: 'var(--bmw-canvas)' }}>
-        <div className="bmw-body-sm" style={{ color: 'var(--bmw-muted)' }}>Cargando...</div>
-      </div>
+      <Layout>
+        <div className="flex items-center justify-center h-full">
+          <div className="bmw-body-sm" style={{ color: 'var(--bmw-muted)' }}>Cargando...</div>
+        </div>
+      </Layout>
     );
   }
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: 'var(--bmw-surface-soft)' }}>
-      <header style={{ 
-        backgroundColor: 'var(--bmw-canvas)', 
-        borderBottom: '1px solid var(--bmw-hairline)',
-        height: '64px'
-      }}>
-        <div className="max-w-screen-2xl mx-auto px-6 h-full">
-          <div className="flex justify-between items-center h-full">
+    <Layout>
+      <div style={{ padding: '32px' }}>
+        <div className="max-w-screen-2xl mx-auto">
+          <div style={{ marginBottom: '32px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div>
-              <h1 className="bmw-title-md" style={{ fontSize: '24px', lineHeight: '1.25' }}>CRM Leads - Kanban Board</h1>
-              <div className="bmw-body-sm" style={{ color: 'var(--bmw-muted)', marginTop: '4px' }}>
+              <div className="bmw-body-sm" style={{ color: 'var(--bmw-muted)', marginBottom: '8px', fontSize: '12px' }}>
                 Total de leads: {leads.length}
               </div>
             </div>
-            <div className="flex gap-3 items-center">
-              <StatusPill />
-              <Link
-                to="/logs"
-                className="bmw-btn-secondary inline-flex items-center justify-center"
-              >
-                Ver Logs
-              </Link>
-              <button
-                onClick={() => setShowCreateForm(true)}
-                className="bmw-btn-primary"
-              >
-                + Agregar Lead Manual
-              </button>
-              <button
-                onClick={logout}
-                className="bmw-btn-secondary"
-                style={{ 
-                  backgroundColor: 'transparent',
-                  color: 'var(--bmw-error)',
-                  borderColor: 'var(--bmw-error)'
-                }}
-              >
-                Cerrar Sesión
-              </button>
+            <button
+              onClick={() => setShowCreateForm(true)}
+              className="bmw-btn-primary"
+            >
+              + Agregar Lead Manual
+            </button>
+          </div>
+
+          <DndContext
+            sensors={sensors}
+            onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
+          >
+            <div className="flex gap-4 overflow-x-auto pb-4">
+              {STAGES.map((stage) => (
+                <KanbanColumn
+                  key={stage}
+                  stage={stage}
+                  leads={getLeadsByStage(stage)}
+                  onLeadClick={setSelectedLead}
+                />
+              ))}
             </div>
-          </div>
+
+            <DragOverlay>
+              {activeLead ? (
+                <div className="rotate-3">
+                  <LeadCard lead={activeLead} onClick={() => {}} />
+                </div>
+              ) : null}
+            </DragOverlay>
+          </DndContext>
         </div>
-      </header>
-
-      <main className="max-w-screen-2xl mx-auto px-6" style={{ paddingTop: '24px', paddingBottom: '24px' }}>
-        <DndContext
-          sensors={sensors}
-          onDragStart={handleDragStart}
-          onDragEnd={handleDragEnd}
-        >
-          <div className="flex gap-4 overflow-x-auto pb-4">
-            {STAGES.map((stage) => (
-              <KanbanColumn
-                key={stage}
-                stage={stage}
-                leads={getLeadsByStage(stage)}
-                onLeadClick={setSelectedLead}
-              />
-            ))}
-          </div>
-
-          <DragOverlay>
-            {activeLead ? (
-              <div className="rotate-3">
-                <LeadCard lead={activeLead} onClick={() => {}} />
-              </div>
-            ) : null}
-          </DragOverlay>
-        </DndContext>
-      </main>
+      </div>
 
       {selectedLead && (
         <LeadModal
@@ -177,7 +149,7 @@ function App() {
           onSuccess={loadLeads}
         />
       )}
-    </div>
+    </Layout>
   );
 }
 

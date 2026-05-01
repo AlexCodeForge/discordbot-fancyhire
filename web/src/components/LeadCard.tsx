@@ -60,7 +60,7 @@ export function LeadCard({ lead, onClick }: LeadCardProps) {
                 <circle cx="8" cy="10" r="1.5" fill="var(--bmw-surface)" />
                 <circle cx="16" cy="10" r="1.5" fill="var(--bmw-surface)" />
               </svg>
-              {lead.unread_count > 1 && (
+              {lead.unread_count && lead.unread_count > 1 && (
                 <span
                   className="absolute -top-1 -right-1 bmw-body-sm"
                   style={{

@@ -88,7 +88,7 @@ export function LeadModal({ lead, onClose, onUpdate }: LeadModalProps) {
         backgroundColor: 'rgba(0, 0, 0, 0.5)'
       }}>
       <div className="max-w-3xl w-full max-h-[90vh] overflow-y-auto" style={{ 
-        backgroundColor: 'var(--bmw-canvas)',
+        backgroundColor: 'var(--bmw-surface-card)',
         borderRadius: '0',
         border: '1px solid var(--bmw-hairline)'
       }}>

@@ -91,7 +91,7 @@ export function CreateLeadForm({ onClose, onSuccess }: CreateLeadFormProps) {
       backgroundColor: 'rgba(0, 0, 0, 0.5)'
     }}>
       <div className="max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col" style={{ 
-        backgroundColor: 'var(--bmw-canvas)',
+        backgroundColor: 'var(--bmw-surface-card)',
         borderRadius: '0',
         border: '1px solid var(--bmw-hairline)'
       }}>
@@ -160,7 +160,7 @@ export function CreateLeadForm({ onClose, onSuccess }: CreateLeadFormProps) {
                         style={{
                           borderBottom: '1px solid var(--bmw-hairline)',
                           backgroundColor: selectedMember?.id === member.id ? 'var(--bmw-surface-soft)' : 'transparent',
-                          borderLeft: selectedMember?.id === member.id ? '4px solid var(--bmw-ink)' : '4px solid transparent'
+                          borderLeft: selectedMember?.id === member.id ? '4px solid var(--bmw-primary)' : '4px solid transparent'
                         }}
                         onMouseEnter={(e) => {
                           if (selectedMember?.id !== member.id) {
