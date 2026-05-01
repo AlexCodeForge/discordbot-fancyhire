@@ -114,7 +114,7 @@ export const api = {
     return response.data;
   },
 
-  async createChannel(data: CreateChannelData): Promise<Channel> {
+  async createChannel(data: CreateChannelData): Promise<{ discord_channel_id: string }> {
     try {
       const body: {
         name: string;
@@ -125,7 +125,8 @@ export const api = {
       if (data.type !== undefined) body.type = data.type;
       if (data.topic !== undefined) body.topic = data.topic;
       if (data.parentId !== undefined) body.parent_id = data.parentId;
-      const response = await axios.post<Channel>(`${CHANNELS_URL}/create`, body);
+      
+      const response = await axios.post<{ discord_channel_id: string }>(`${CHANNELS_URL}/create`, body);
       return response.data;
     } catch (err) {
       handleApiError(err, 'createChannel');
@@ -236,6 +237,23 @@ export const api = {
       await axios.delete(`${TICKETS_URL}/${ticketId}/channel`);
     } catch (err) {
       handleApiError(err, 'deleteTicketChannel');
+    }
+  },
+
+  async moveChannels(channelIds: number[], targetCategoryId: string | null): Promise<void> {
+    try {
+      await axios.patch(`${CHANNELS_URL}/move`, { channelIds, targetCategoryId });
+    } catch (err) {
+      handleApiError(err, 'moveChannels');
+    }
+  },
+
+  async checkTicketChannelExists(ticketId: number): Promise<boolean> {
+    try {
+      const response = await axios.get<{ exists: boolean }>(`${TICKETS_URL}/${ticketId}/channel-exists`);
+      return response.data.exists;
+    } catch (err) {
+      handleApiError(err, 'checkTicketChannelExists');
     }
   },
 

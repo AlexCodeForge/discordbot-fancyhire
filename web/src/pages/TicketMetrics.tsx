@@ -32,6 +32,7 @@ export function TicketMetrics() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedLeadId, setSelectedLeadId] = useState<number | null>(null);
   const [creating, setCreating] = useState(false);
+  const [channelExistence, setChannelExistence] = useState<Record<number, boolean>>({});
   
   // Filtros
   const [filterStatus, setFilterStatus] = useState<string>('all');
@@ -77,9 +78,28 @@ export function TicketMetrics() {
           console.error(`Error loading tickets for lead ${lead.id}:`, err);
         }
       }
-      setTickets(allTickets.sort((a, b) => 
+      const sortedTickets = allTickets.sort((a, b) => 
         new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-      ));
+      );
+      setTickets(sortedTickets);
+
+      // Verificar existencia de canales para tickets cerrados
+      const closedTickets = sortedTickets.filter(t => t.status !== 'open');
+      const existenceMap: Record<number, boolean> = {};
+      
+      await Promise.all(
+        closedTickets.map(async (ticket) => {
+          try {
+            const exists = await api.checkTicketChannelExists(ticket.id);
+            existenceMap[ticket.id] = exists;
+          } catch (error) {
+            console.error(`Error checking channel for ticket ${ticket.id}:`, error);
+            existenceMap[ticket.id] = false;
+          }
+        })
+      );
+      
+      setChannelExistence(existenceMap);
     } catch (error: any) {
       console.error('Error cargando datos:', error);
       setError(error.message || 'Error al cargar datos');
@@ -686,6 +706,18 @@ export function TicketMetrics() {
                                   })}
                                   {ticket.closed_by && ` por ${ticket.closed_by}`}
                                 </p>
+                                {channelExistence[ticket.id] === false && (
+                                  <p className="bmw-caption mt-1 flex items-center gap-1" style={{ color: 'var(--bmw-error)' }}>
+                                    <span style={{ fontSize: '14px' }}>🗑️</span>
+                                    Canal de Discord eliminado
+                                  </p>
+                                )}
+                                {channelExistence[ticket.id] === true && (
+                                  <p className="bmw-caption mt-1 flex items-center gap-1" style={{ color: 'var(--bmw-success)' }}>
+                                    <span style={{ fontSize: '14px' }}>✓</span>
+                                    Canal de Discord activo
+                                  </p>
+                                )}
                               </div>
                             )}
                           </div>

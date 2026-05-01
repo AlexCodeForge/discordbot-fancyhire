@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { Channel } from '../types/Channel';
+import { ConfirmationModal } from './ConfirmationModal';
 
 function TrashIcon({ className }: { className?: string }) {
   return (
@@ -29,76 +30,55 @@ export interface ChannelHeaderProps {
 }
 
 export function ChannelHeader({ channel, onDeleteChannel }: ChannelHeaderProps) {
-  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   return (
-    <header
-      className="flex w-full items-center justify-between gap-4"
-      style={{
-        minHeight: '56px',
-        backgroundColor: 'var(--bmw-surface-1)',
-        borderBottom: '1px solid var(--bmw-on-surface-variant)',
-        padding: '16px',
-      }}
-    >
-      <div className="min-w-0 flex-1 flex flex-col gap-0.5">
-        <h1 className="bmw-title-md truncate">
-          <span style={{ color: 'var(--bmw-muted)' }}>#</span>
-          {channel.name}
-        </h1>
-        {channel.topic ? (
-          <p className="bmw-body-xs truncate">{channel.topic}</p>
-        ) : null}
-      </div>
+    <>
+      <header
+        className="flex w-full items-center justify-between gap-4"
+        style={{
+          minHeight: '56px',
+          backgroundColor: 'var(--bmw-surface-1)',
+          borderBottom: '1px solid var(--bmw-on-surface-variant)',
+          padding: '16px',
+        }}
+      >
+        <div className="min-w-0 flex-1 flex flex-col gap-0.5">
+          <h1 className="bmw-title-md truncate">
+            <span style={{ color: 'var(--bmw-muted)' }}>#</span>
+            {channel.name}
+          </h1>
+          {channel.topic ? (
+            <p className="bmw-body-xs truncate">{channel.topic}</p>
+          ) : null}
+        </div>
 
-      <div className="flex shrink-0 items-center gap-2">
-        {confirmOpen ? (
-          <div
-            className="flex flex-wrap items-center justify-end gap-2 sm:flex-nowrap"
-            role="group"
-            aria-label="Confirmar eliminación de canal"
-          >
-            <span className="bmw-body-sm" style={{ color: 'var(--bmw-body)' }}>
-              ¿Eliminar este canal?
-            </span>
-            <button
-              type="button"
-              className="bmw-btn-secondary"
-              style={{ height: '40px', padding: '8px 16px' }}
-              onClick={() => setConfirmOpen(false)}
-            >
-              Cancelar
-            </button>
-            <button
-              type="button"
-              className="bmw-btn-secondary"
-              style={{
-                height: '40px',
-                padding: '8px 16px',
-                backgroundColor: 'transparent',
-                color: 'var(--bmw-error)',
-                borderColor: 'var(--bmw-error)',
-              }}
-              onClick={() => {
-                setConfirmOpen(false);
-                onDeleteChannel();
-              }}
-            >
-              Eliminar
-            </button>
-          </div>
-        ) : (
+        <div className="flex shrink-0 items-center gap-2">
           <button
             type="button"
             className="bmw-btn-ghost"
             aria-label="Eliminar canal"
             title="Eliminar canal"
-            onClick={() => setConfirmOpen(true)}
+            onClick={() => setShowDeleteConfirm(true)}
           >
             <TrashIcon />
           </button>
-        )}
-      </div>
-    </header>
+        </div>
+      </header>
+
+      <ConfirmationModal
+        isOpen={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+        onConfirm={() => {
+          setShowDeleteConfirm(false);
+          onDeleteChannel();
+        }}
+        title="Eliminar Canal"
+        message={`¿Estás seguro de eliminar el canal "#${channel.name}"? Esta acción no se puede deshacer y se perderán todos los mensajes.`}
+        confirmText="Eliminar"
+        cancelText="Cancelar"
+        variant="danger"
+      />
+    </>
   );
 }

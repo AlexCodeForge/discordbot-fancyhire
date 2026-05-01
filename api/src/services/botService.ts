@@ -99,6 +99,27 @@ export class BotService {
     }
   }
 
+  static async checkChannelExists(channelId: string): Promise<boolean> {
+    Logger.info('Checking if channel exists', { channelId });
+    
+    try {
+      const response = await axios.get<{ exists: boolean }>(`${BOT_URL}/check-channel/${channelId}`, {
+        timeout: 10000
+      });
+      
+      Logger.info('Channel existence checked', { channelId, exists: response.data.exists });
+      return response.data.exists;
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        const errorMsg = error.response?.data?.message || error.message || 'Error checking channel';
+        Logger.error('Error checking channel', { channelId }, new Error(errorMsg));
+        return false;
+      }
+      Logger.error('Unknown error checking channel', { channelId }, error as Error);
+      return false;
+    }
+  }
+
   static async deleteTicketChannel(channelId: string): Promise<void> {
     Logger.info('Deleting ticket channel', { channelId });
     

@@ -1,13 +1,16 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Layout } from '../components/Layout';
-import { ChannelSidebar, isCategoryChannel } from '../components/ChannelSidebar';
+import { ChannelSidebarImproved } from '../components/ChannelSidebarImproved';
 import { ChannelHeader } from '../components/ChannelHeader';
 import { ChannelChat } from '../components/ChannelChat';
 import { EmptyState } from '../components/EmptyState';
 import { CreateChannelModal } from '../components/CreateChannelModal';
+import { ManageCategoriesModal } from '../components/ManageCategoriesModal';
+import { MoveChannelsModal } from '../components/MoveChannelsModal';
 import { api } from '../services/api';
 import { Channel } from '../types/Channel';
 import { ChannelMessage, CreateChannelData } from '../types/ChannelMessage';
+import { isCategoryChannel } from '../components/ChannelSidebarImproved';
 
 function logError(message: string) {
   console.error(message);
@@ -18,6 +21,8 @@ export function ChannelsPage() {
   const [selectedChannel, setSelectedChannel] = useState<Channel | null>(null);
   const [messages, setMessages] = useState<ChannelMessage[]>([]);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isManageCategoriesOpen, setIsManageCategoriesOpen] = useState(false);
+  const [isMoveChannelsOpen, setIsMoveChannelsOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [bannerError, setBannerError] = useState<string | null>(null);
 
@@ -112,9 +117,29 @@ export function ChannelsPage() {
     setIsCreateModalOpen(true);
   };
 
+  const handleManageCategories = () => {
+    setIsManageCategoriesOpen(true);
+  };
+
+  const handleCreateCategory = async (name: string) => {
+    try {
+      await api.createChannel({ 
+        name, 
+        type: 'GUILD_CATEGORY'
+      });
+      await loadChannels();
+    } catch (e) {
+      throw e;
+    }
+  };
+
   const handleCreateChannelSubmit = async (data: CreateChannelData) => {
-    await api.createChannel(data);
-    await loadChannels();
+    try {
+      await api.createChannel(data);
+      await loadChannels();
+    } catch (e) {
+      throw e;
+    }
   };
 
   const handleDeleteChannel = async (channel: Channel) => {
@@ -160,6 +185,19 @@ export function ChannelsPage() {
     })();
   };
 
+  const handleMoveChannels = async (channelIds: number[], targetCategoryId: string | null) => {
+    try {
+      await api.moveChannels(channelIds, targetCategoryId);
+      // Esperar un momento para que se sincronice
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      await loadChannels();
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'No se pudieron mover los canales';
+      logError(msg);
+      setBannerError(msg);
+    }
+  };
+
   if (loading) {
     return (
       <Layout>
@@ -203,11 +241,13 @@ export function ChannelsPage() {
         )}
 
         <div className="flex min-h-0 flex-1" style={{ backgroundColor: 'var(--bmw-surface-2)' }}>
-          <ChannelSidebar
+          <ChannelSidebarImproved
             channels={channels}
             selectedChannel={selectedChannel}
             onSelectChannel={handleSelectChannel}
             onCreateChannel={handleCreateChannel}
+            onOpenMoveModal={() => setIsMoveChannelsOpen(true)}
+            onManageCategories={handleManageCategories}
           />
           <div className="flex min-h-0 flex-1 flex-col">
             {selectedChannel ? (
@@ -236,6 +276,21 @@ export function ChannelsPage() {
         onClose={() => setIsCreateModalOpen(false)}
         onCreate={handleCreateChannelSubmit}
         categories={categoryChannels}
+      />
+
+      <ManageCategoriesModal
+        isOpen={isManageCategoriesOpen}
+        onClose={() => setIsManageCategoriesOpen(false)}
+        categories={categoryChannels}
+        onCreateCategory={handleCreateCategory}
+        onDeleteCategory={handleDeleteChannel}
+      />
+
+      <MoveChannelsModal
+        isOpen={isMoveChannelsOpen}
+        onClose={() => setIsMoveChannelsOpen(false)}
+        channels={channels}
+        onMoveChannels={handleMoveChannels}
       />
     </Layout>
   );

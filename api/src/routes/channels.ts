@@ -110,4 +110,21 @@ router.post('/create', authMiddleware, async (req, res, next) => {
   }
 });
 
+router.patch('/move', authMiddleware, async (req, res, next) => {
+  try {
+    const { channelIds, targetCategoryId } = req.body;
+
+    if (!Array.isArray(channelIds) || channelIds.length === 0) {
+      return res.status(400).json({ error: 'channelIds debe ser un array no vacío' });
+    }
+
+    await ChannelService.moveChannels(channelIds, targetCategoryId);
+
+    Logger.info('Canales movidos vía API', { channelIds, targetCategoryId }, req);
+    res.json({ success: true });
+  } catch (error) {
+    next(error);
+  }
+});
+
 export default router;

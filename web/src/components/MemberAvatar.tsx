@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 
 interface MemberAvatarProps {
   avatar: string | null;
@@ -13,6 +13,8 @@ export const MemberAvatar: React.FC<MemberAvatarProps> = ({
   id,
   size = 40 
 }) => {
+  const [imageError, setImageError] = useState(false);
+
   const getAvatarUrl = () => {
     if (!avatar) return null;
     return `https://cdn.discordapp.com/avatars/${id}/${avatar}.png?size=${size * 2}`;
@@ -24,22 +26,39 @@ export const MemberAvatar: React.FC<MemberAvatarProps> = ({
 
   const avatarUrl = getAvatarUrl();
 
-  if (avatarUrl) {
+  if (avatarUrl && !imageError) {
     return (
       <img
         src={avatarUrl}
         alt={username}
-        className="rounded-full"
-        style={{ width: size, height: size }}
-        loading="lazy"
+        style={{ 
+          width: `${size}px`, 
+          height: `${size}px`,
+          borderRadius: '50%',
+          objectFit: 'cover',
+          flexShrink: 0,
+          display: 'block'
+        }}
+        onError={() => setImageError(true)}
       />
     );
   }
 
   return (
     <div
-      className="rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-semibold"
-      style={{ width: size, height: size, fontSize: size * 0.4 }}
+      style={{ 
+        width: `${size}px`, 
+        height: `${size}px`,
+        borderRadius: '50%',
+        background: 'linear-gradient(135deg, #1c69d4 0%, #9b59b6 100%)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        color: '#ffffff',
+        fontWeight: 700,
+        fontSize: `${size * 0.4}px`,
+        flexShrink: 0
+      }}
     >
       {getInitials()}
     </div>

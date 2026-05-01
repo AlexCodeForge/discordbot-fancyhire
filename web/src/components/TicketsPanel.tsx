@@ -10,6 +10,7 @@ export function TicketsPanel({ leadId, onTicketSelect }: TicketsPanelProps) {
   const [tickets, setTickets] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [channelExistence, setChannelExistence] = useState<Record<number, boolean>>({});
 
   useEffect(() => {
     loadTickets();
@@ -20,6 +21,24 @@ export function TicketsPanel({ leadId, onTicketSelect }: TicketsPanelProps) {
     try {
       const data = await api.getTickets(leadId);
       setTickets(data);
+
+      // Verificar existencia de canales para tickets cerrados
+      const closedTickets = data.filter((t: any) => t.status !== 'open');
+      const existenceMap: Record<number, boolean> = {};
+      
+      await Promise.all(
+        closedTickets.map(async (ticket: any) => {
+          try {
+            const exists = await api.checkTicketChannelExists(ticket.id);
+            existenceMap[ticket.id] = exists;
+          } catch (error) {
+            console.error(`Error checking channel for ticket ${ticket.id}:`, error);
+            existenceMap[ticket.id] = false;
+          }
+        })
+      );
+      
+      setChannelExistence(existenceMap);
     } catch (error) {
       console.error('Error cargando tickets:', error);
     } finally {
@@ -200,6 +219,18 @@ export function TicketsPanel({ leadId, onTicketSelect }: TicketsPanelProps) {
                   <p className="bmw-caption" style={{ color: 'var(--bmw-muted)' }}>
                     {ticket.closed_at ? new Date(ticket.closed_at).toLocaleString('es-ES') : ''}
                   </p>
+                  {channelExistence[ticket.id] === false && (
+                    <p className="bmw-caption mt-1 flex items-center gap-1" style={{ color: 'var(--bmw-error)' }}>
+                      <span style={{ fontSize: '14px' }}>🗑️</span>
+                      Canal eliminado
+                    </p>
+                  )}
+                  {channelExistence[ticket.id] === true && (
+                    <p className="bmw-caption mt-1 flex items-center gap-1" style={{ color: 'var(--bmw-success)' }}>
+                      <span style={{ fontSize: '14px' }}>✓</span>
+                      Canal activo
+                    </p>
+                  )}
                 </div>
               ))}
             </div>

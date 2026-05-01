@@ -4,6 +4,8 @@ import { api } from '../services/api';
 import { ChatModal } from './ChatModal';
 import { TicketsPanel } from './TicketsPanel';
 import { TicketChatModal } from './TicketChatModal';
+import { ConfirmationModal } from './ConfirmationModal';
+import { ErrorModal } from './ErrorModal';
 
 interface LeadModalProps {
   lead: Lead;
@@ -19,6 +21,10 @@ export function LeadModal({ lead, onClose, onUpdate }: LeadModalProps) {
   const [unreadCount, setUnreadCount] = useState(0);
   const [activeTab, setActiveTab] = useState<'details' | 'tickets'>('details');
   const [selectedTicket, setSelectedTicket] = useState<any>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
 
   useEffect(() => {
     loadHistory();
@@ -51,27 +57,29 @@ export function LeadModal({ lead, onClose, onUpdate }: LeadModalProps) {
       await api.updateLead(lead.id, editedLead);
       onUpdate();
       onClose();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error actualizando lead:', error);
-      alert('Error al actualizar el lead');
+      setErrorMessage(error.response?.data?.message || error.message || 'Error al actualizar el lead');
+      setShowErrorModal(true);
     } finally {
       setLoading(false);
     }
   };
 
   const handleDelete = async () => {
-    if (!confirm('¿Estás seguro de eliminar este lead?')) return;
-    
-    setLoading(true);
+    setDeleteLoading(true);
     try {
       await api.deleteLead(lead.id);
+      setShowDeleteConfirm(false);
       onUpdate();
       onClose();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error eliminando lead:', error);
-      alert('Error al eliminar el lead');
+      setErrorMessage(error.response?.data?.message || error.message || 'Error al eliminar el lead');
+      setShowErrorModal(true);
+      setShowDeleteConfirm(false);
     } finally {
-      setLoading(false);
+      setDeleteLoading(false);
     }
   };
 
@@ -308,7 +316,7 @@ export function LeadModal({ lead, onClose, onUpdate }: LeadModalProps) {
 
           <div className="flex justify-between mt-6 pt-4" style={{ borderTop: '1px solid var(--bmw-hairline)' }}>
             <button
-              onClick={handleDelete}
+              onClick={() => setShowDeleteConfirm(true)}
               disabled={loading}
               className="bmw-btn-secondary"
               style={{ 
@@ -350,6 +358,25 @@ export function LeadModal({ lead, onClose, onUpdate }: LeadModalProps) {
         </div>
       </div>
     </div>
+
+    <ConfirmationModal
+      isOpen={showDeleteConfirm}
+      onClose={() => setShowDeleteConfirm(false)}
+      onConfirm={handleDelete}
+      title="Eliminar Lead"
+      message={`¿Estás seguro de que deseas eliminar el lead "${lead.name}"? Esta acción no se puede deshacer y se perderán todos los datos asociados.`}
+      confirmText="Eliminar"
+      cancelText="Cancelar"
+      variant="danger"
+      loading={deleteLoading}
+    />
+
+    <ErrorModal
+      isOpen={showErrorModal}
+      onClose={() => setShowErrorModal(false)}
+      title="Error"
+      message={errorMessage}
+    />
     </>
   );
 }

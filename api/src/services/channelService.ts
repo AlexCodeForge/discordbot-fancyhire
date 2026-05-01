@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { Logger } from '../utils/Logger';
+import { ChannelModel } from '../models/Channel';
 
 const BOT_URL = process.env.BOT_URL || 'http://127.0.0.1:3005';
 
@@ -149,6 +150,50 @@ export class ChannelService {
       Logger.error(
         'Error desconocido eliminando canal',
         { channelId },
+        error instanceof Error ? error : undefined
+      );
+      throw error;
+    }
+  }
+
+  static async moveChannels(channelIds: number[], targetCategoryId: string | null): Promise<void> {
+    try {
+      // Primero obtenemos los discord_channel_id de los canales a mover
+      const channels = await ChannelModel.getAll();
+      const discordChannelIds = channelIds
+        .map(id => {
+          const channel = channels.find(c => c.id === id);
+          return channel ? channel.discord_channel_id : null;
+        })
+        .filter((id): id is string => id !== null);
+
+      if (discordChannelIds.length === 0) {
+        throw new Error('No se encontraron canales válidos para mover');
+      }
+
+      await axios.post(`${BOT_URL}/move-channels`, {
+        discordChannelIds,
+        targetCategoryId,
+      }, {
+        timeout: 15000,
+      });
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        const msg =
+          error.response?.data?.message ||
+          error.response?.data?.error ||
+          error.message ||
+          'Error al mover canales';
+        Logger.error(
+          'Error HTTP moviendo canales',
+          { channelIds, targetCategoryId, status: error.response?.status },
+          error instanceof Error ? error : undefined
+        );
+        throw new Error(msg);
+      }
+      Logger.error(
+        'Error desconocido moviendo canales',
+        { channelIds, targetCategoryId },
         error instanceof Error ? error : undefined
       );
       throw error;

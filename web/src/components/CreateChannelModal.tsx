@@ -31,6 +31,15 @@ export function CreateChannelModal({
   const [loading, setLoading] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
+  const formatChannelName = (input: string): string => {
+    return input
+      .toLowerCase()
+      .replace(/\s+/g, '-')
+      .replace(/[^a-z0-9-_]/g, '')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '');
+  };
+
   useEffect(() => {
     if (isOpen) {
       setMounted(true);
@@ -54,23 +63,23 @@ export function CreateChannelModal({
     }
   }, [isOpen]);
 
-  const nameTrimmed = name.trim();
+  const formattedName = formatChannelName(name);
   const nameError =
-    touchedName && nameTrimmed.length < 2
+    touchedName && formattedName.length < 2
       ? 'El nombre debe tener al menos 2 caracteres'
       : null;
-  const isValid = nameTrimmed.length >= 2;
+  const isValid = formattedName.length >= 2;
 
   const handleSubmit = useCallback(
     async (e: FormEvent) => {
       e.preventDefault();
       setTouchedName(true);
-      if (nameTrimmed.length < 2) return;
+      if (formattedName.length < 2) return;
 
       setLoading(true);
       setSubmitError(null);
       const payload: CreateChannelData = {
-        name: nameTrimmed,
+        name: formattedName,
         type,
         ...(topic.trim() ? { topic: topic.trim() } : {}),
         ...(parentId ? { parentId } : {}),
@@ -86,7 +95,7 @@ export function CreateChannelModal({
         setLoading(false);
       }
     },
-    [nameTrimmed, type, topic, parentId, onCreate, onClose]
+    [formattedName, type, topic, parentId, onCreate, onClose]
   );
 
   if (!mounted) return null;
@@ -138,6 +147,14 @@ export function CreateChannelModal({
               disabled={loading}
               autoComplete="off"
             />
+            {formattedName && formattedName !== name && (
+              <p
+                className="bmw-body-xs mt-1"
+                style={{ color: 'var(--bmw-muted)' }}
+              >
+                Se formateará como: <strong>{formattedName}</strong>
+              </p>
+            )}
             {nameError && (
               <p
                 className="bmw-body-xs mt-1"
@@ -205,13 +222,39 @@ export function CreateChannelModal({
           </div>
 
           {submitError && (
-            <p
-              className="bmw-body-sm"
-              style={{ color: 'var(--bmw-error)' }}
+            <div 
+              className="bmw-card elevation-1"
+              style={{ 
+                backgroundColor: 'var(--bmw-surface-strong)', 
+                padding: 'var(--bmw-spacing-lg)',
+                borderLeft: '3px solid var(--bmw-error)'
+              }}
               role="alert"
             >
-              {submitError}
-            </p>
+              <div className="flex items-start gap-2">
+                <svg 
+                  className="shrink-0 mt-0.5" 
+                  width="20" 
+                  height="20" 
+                  viewBox="0 0 20 20" 
+                  fill="none" 
+                  xmlns="http://www.w3.org/2000/svg"
+                  aria-hidden="true"
+                >
+                  <circle cx="10" cy="10" r="8" stroke="var(--bmw-error)" strokeWidth="2" fill="none"/>
+                  <path d="M10 6V11" stroke="var(--bmw-error)" strokeWidth="2" strokeLinecap="round"/>
+                  <circle cx="10" cy="14" r="1" fill="var(--bmw-error)"/>
+                </svg>
+                <div className="flex-1">
+                  <p className="bmw-label mb-1" style={{ color: 'var(--bmw-error)' }}>
+                    Error al crear canal
+                  </p>
+                  <p className="bmw-body-sm" style={{ color: 'var(--bmw-ink)' }}>
+                    {submitError}
+                  </p>
+                </div>
+              </div>
+            </div>
           )}
 
           <div className="flex justify-end gap-2 pt-2">

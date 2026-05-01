@@ -237,6 +237,23 @@ router.delete('/:ticketId/channel', async (req, res, next) => {
   }
 });
 
+router.get('/:ticketId/channel-exists', async (req, res, next) => {
+  try {
+    const ticketId = parseInt(req.params.ticketId);
+    const ticket = await TicketModel.getById(ticketId);
+
+    if (!ticket) {
+      return res.status(404).json({ error: 'Ticket no encontrado' });
+    }
+
+    const exists = await BotService.checkChannelExists(ticket.discord_channel_id);
+    res.json({ exists });
+  } catch (error: any) {
+    Logger.error('Error verificando canal de ticket', { ticketId: req.params.ticketId }, error as Error, req);
+    next(error);
+  }
+});
+
 router.get('/:ticketId', async (req, res, next) => {
   try {
     const ticketId = parseInt(req.params.ticketId);

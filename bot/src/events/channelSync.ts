@@ -7,6 +7,7 @@ const SYNCABLE_TYPES = new Set<ChannelType>([
   ChannelType.GuildText,
   ChannelType.GuildAnnouncement,
   ChannelType.GuildForum,
+  ChannelType.GuildCategory,
 ]);
 
 function getChannelTopic(channel: GuildChannel): string | null {

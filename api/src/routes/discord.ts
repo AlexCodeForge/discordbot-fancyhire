@@ -130,4 +130,171 @@ router.post('/members/:memberId/roles', async (req: Request, res: Response) => {
   }
 });
 
+router.post('/roles', async (req: Request, res: Response) => {
+  try {
+    const { guildId, name, color, permissions, hoist, mentionable } = req.body;
+    
+    if (!guildId || !name) {
+      return res.status(400).json({ error: 'guildId and name are required' });
+    }
+    
+    Logger.info('Creando rol en Discord', { guildId, name }, req);
+    
+    const axios = await import('axios');
+    const response = await axios.default.post(`${process.env.BOT_URL}/create-role`, {
+      guildId,
+      name,
+      color,
+      permissions,
+      hoist,
+      mentionable
+    });
+    
+    Logger.info('Rol creado exitosamente', { roleId: response.data.role?.id }, req);
+    res.json(response.data);
+  } catch (error: any) {
+    Logger.error(
+      'Error creando rol',
+      { guildId: req.body.guildId },
+      error instanceof Error ? error : new Error(String(error)),
+      req
+    );
+    res.status(error.response?.status || 500).json({ 
+      error: error.response?.data?.error || 'Error al crear rol',
+      message: error.response?.data?.message || error.message
+    });
+  }
+});
+
+router.patch('/roles/:roleId', async (req: Request, res: Response) => {
+  try {
+    const { roleId } = req.params;
+    const { guildId, name, color, permissions, hoist, mentionable } = req.body;
+    
+    if (!guildId) {
+      return res.status(400).json({ error: 'guildId is required' });
+    }
+    
+    Logger.info('Actualizando rol en Discord', { roleId, guildId }, req);
+    
+    const axios = await import('axios');
+    const response = await axios.default.patch(`${process.env.BOT_URL}/roles/${roleId}`, {
+      guildId,
+      name,
+      color,
+      permissions,
+      hoist,
+      mentionable
+    });
+    
+    Logger.info('Rol actualizado exitosamente', { roleId }, req);
+    res.json(response.data);
+  } catch (error: any) {
+    Logger.error(
+      'Error actualizando rol',
+      { roleId: req.params.roleId },
+      error instanceof Error ? error : new Error(String(error)),
+      req
+    );
+    res.status(error.response?.status || 500).json({ 
+      error: error.response?.data?.error || 'Error al actualizar rol',
+      message: error.response?.data?.message || error.message
+    });
+  }
+});
+
+router.delete('/roles/:roleId', async (req: Request, res: Response) => {
+  try {
+    const { roleId } = req.params;
+    const { guildId } = req.body;
+    
+    if (!guildId) {
+      return res.status(400).json({ error: 'guildId is required' });
+    }
+    
+    Logger.info('Eliminando rol en Discord', { roleId, guildId }, req);
+    
+    const axios = await import('axios');
+    const response = await axios.default.delete(`${process.env.BOT_URL}/roles/${roleId}`, {
+      data: { guildId }
+    });
+    
+    Logger.info('Rol eliminado exitosamente', { roleId }, req);
+    res.json(response.data);
+  } catch (error: any) {
+    Logger.error(
+      'Error eliminando rol',
+      { roleId: req.params.roleId },
+      error instanceof Error ? error : new Error(String(error)),
+      req
+    );
+    res.status(error.response?.status || 500).json({ 
+      error: error.response?.data?.error || 'Error al eliminar rol',
+      message: error.response?.data?.message || error.message
+    });
+  }
+});
+
+router.put('/roles/:roleId/position', async (req: Request, res: Response) => {
+  try {
+    const { roleId } = req.params;
+    const { guildId, position } = req.body;
+    
+    if (!guildId || position === undefined) {
+      return res.status(400).json({ error: 'guildId and position are required' });
+    }
+    
+    Logger.info('Reordenando rol en Discord', { roleId, guildId, position }, req);
+    
+    const axios = await import('axios');
+    const response = await axios.default.put(`${process.env.BOT_URL}/roles/${roleId}/position`, {
+      guildId,
+      position
+    });
+    
+    Logger.info('Rol reordenado exitosamente', { roleId, position }, req);
+    res.json(response.data);
+  } catch (error: any) {
+    Logger.error(
+      'Error reordenando rol',
+      { roleId: req.params.roleId },
+      error instanceof Error ? error : new Error(String(error)),
+      req
+    );
+    res.status(error.response?.status || 500).json({ 
+      error: error.response?.data?.error || 'Error al reordenar rol',
+      message: error.response?.data?.message || error.message
+    });
+  }
+});
+
+router.get('/roles/:roleId/members-count', async (req: Request, res: Response) => {
+  try {
+    const { roleId } = req.params;
+    const { guildId } = req.query;
+    
+    if (!guildId) {
+      return res.status(400).json({ error: 'guildId is required' });
+    }
+    
+    const axios = await import('axios');
+    const response = await axios.default.get(
+      `${process.env.BOT_URL}/roles/${roleId}/members-count?guildId=${guildId}`
+    );
+    
+    res.json(response.data);
+  } catch (error: any) {
+    Logger.error(
+      'Error obteniendo contador de miembros del rol',
+      { roleId: req.params.roleId },
+      error instanceof Error ? error : new Error(String(error)),
+      req
+    );
+    res.status(error.response?.status || 500).json({ 
+      error: error.response?.data?.error || 'Error al obtener contador',
+      message: error.response?.data?.message || error.message
+    });
+  }
+});
+
 export default router;

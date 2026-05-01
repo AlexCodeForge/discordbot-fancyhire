@@ -1,5 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { api } from '../services/api';
+import { ConfirmationModal } from './ConfirmationModal';
+import { SuccessModal } from './SuccessModal';
+import { ErrorModal } from './ErrorModal';
 
 interface TicketChatModalProps {
   ticket: any;
@@ -25,8 +28,18 @@ export function TicketChatModal({ ticket, onClose, onTicketUpdated }: TicketChat
   const [showCloseDialog, setShowCloseDialog] = useState(false);
   const [deleteChannel, setDeleteChannel] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [showDeleteChannelConfirm, setShowDeleteChannelConfirm] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [successData, setSuccessData] = useState<{
+    title: string;
+    message: string;
+    details?: Array<{ label: string; value: string; link?: string }>;
+  }>({ title: '', message: '' });
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [errorData, setErrorData] = useState<{ title: string; message: string }>({ title: '', message: '' });
   const [newMessage, setNewMessage] = useState('');
   const [sending, setSending] = useState(false);
+  const [channelExists, setChannelExists] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -38,6 +51,12 @@ export function TicketChatModal({ ticket, onClose, onTicketUpdated }: TicketChat
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  useEffect(() => {
+    if (ticket.status !== 'open') {
+      checkChannelExists();
+    }
+  }, [ticket.id, ticket.status]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -52,6 +71,16 @@ export function TicketChatModal({ ticket, onClose, onTicketUpdated }: TicketChat
       console.error('Error cargando mensajes:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const checkChannelExists = async () => {
+    try {
+      const exists = await api.checkTicketChannelExists(ticket.id);
+      setChannelExists(exists);
+    } catch (error) {
+      console.error('Error verificando existencia del canal:', error);
+      setChannelExists(false);
     }
   };
 
@@ -82,34 +111,68 @@ export function TicketChatModal({ ticket, onClose, onTicketUpdated }: TicketChat
       const result = await response.json();
       
       if (result.transcript_url) {
-        const channelMsg = deleteChannel ? '\n\nEl canal de Discord ha sido eliminado.' : '';
-        alert(`Ticket cerrado exitosamente.${channelMsg}\n\nTranscripción: ${window.location.origin}${result.transcript_url}`);
+        const details = [];
+        
+        if (deleteChannel) {
+          details.push({
+            label: 'Canal de Discord',
+            value: 'Eliminado exitosamente'
+          });
+        }
+        
+        details.push({
+          label: 'Transcripción',
+          value: 'Ver PDF generado',
+          link: `${window.location.origin}${result.transcript_url}`
+        });
+
+        setSuccessData({
+          title: 'Ticket Cerrado Exitosamente',
+          message: 'El ticket ha sido cerrado y se ha generado una transcripción PDF automáticamente.',
+          details
+        });
+        setShowSuccessModal(true);
+      } else {
+        onTicketUpdated();
+        onClose();
       }
-      
-      onTicketUpdated();
-      onClose();
     } catch (error: any) {
       console.error('Error cerrando ticket:', error);
-      alert(error.message || 'Error al cerrar ticket');
+      setErrorData({
+        title: 'Error al Cerrar Ticket',
+        message: error.message || 'No se pudo cerrar el ticket. Por favor, intenta nuevamente.'
+      });
+      setShowErrorModal(true);
     } finally {
       setClosing(false);
     }
   };
 
   const handleDeleteChannel = async () => {
-    if (!confirm('¿Estás seguro de eliminar el canal de Discord? Esta acción no se puede deshacer.')) {
-      return;
-    }
-
     setDeleting(true);
     try {
       await api.deleteTicketChannel(ticket.id);
-      alert('Canal eliminado exitosamente');
-      onTicketUpdated();
-      onClose();
+      
+      setChannelExists(false);
+      
+      setSuccessData({
+        title: 'Canal Eliminado',
+        message: 'El canal de Discord ha sido eliminado exitosamente.',
+        details: [{
+          label: 'Ticket',
+          value: ticket.title || `Ticket #${ticket.id}`
+        }]
+      });
+      setShowSuccessModal(true);
+      setShowDeleteChannelConfirm(false);
     } catch (error: any) {
       console.error('Error eliminando canal:', error);
-      alert(error.message || 'Error al eliminar canal');
+      setErrorData({
+        title: 'Error al Eliminar Canal',
+        message: error.message || 'No se pudo eliminar el canal de Discord. Por favor, intenta nuevamente.'
+      });
+      setShowErrorModal(true);
+      setShowDeleteChannelConfirm(false);
     } finally {
       setDeleting(false);
     }
@@ -140,7 +203,11 @@ export function TicketChatModal({ ticket, onClose, onTicketUpdated }: TicketChat
       setTimeout(loadMessages, 1000);
     } catch (error: any) {
       console.error('Error enviando mensaje:', error);
-      alert(error.message || 'Error al enviar mensaje');
+      setErrorData({
+        title: 'Error al Enviar Mensaje',
+        message: error.message || 'No se pudo enviar el mensaje. Por favor, intenta nuevamente.'
+      });
+      setShowErrorModal(true);
     } finally {
       setSending(false);
     }
@@ -363,18 +430,20 @@ export function TicketChatModal({ ticket, onClose, onTicketUpdated }: TicketChat
               <p className="bmw-body-sm text-center" style={{ color: 'var(--bmw-muted)' }}>
                 Este ticket está cerrado. Los nuevos mensajes solo pueden enviarse en tickets abiertos.
               </p>
-              <button
-                onClick={handleDeleteChannel}
-                disabled={deleting}
-                className="bmw-btn-secondary w-full"
-                style={{ 
-                  backgroundColor: 'var(--bmw-error)',
-                  color: 'white',
-                  border: 'none'
-                }}
-              >
-                {deleting ? 'Eliminando...' : 'Eliminar Canal de Discord'}
-              </button>
+              {channelExists && (
+                <button
+                  onClick={() => setShowDeleteChannelConfirm(true)}
+                  disabled={deleting}
+                  className="bmw-btn-secondary w-full"
+                  style={{ 
+                    backgroundColor: 'var(--bmw-error)',
+                    color: 'white',
+                    border: 'none'
+                  }}
+                >
+                  Eliminar Canal de Discord
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -443,6 +512,37 @@ export function TicketChatModal({ ticket, onClose, onTicketUpdated }: TicketChat
           </div>
         </div>
       )}
+
+      <ConfirmationModal
+        isOpen={showDeleteChannelConfirm}
+        onClose={() => setShowDeleteChannelConfirm(false)}
+        onConfirm={handleDeleteChannel}
+        title="Eliminar Canal de Discord"
+        message={`¿Estás seguro de eliminar el canal de Discord "${ticket.discord_channel_name || ticket.title}"? Esta acción no se puede deshacer.`}
+        confirmText="Eliminar Canal"
+        cancelText="Cancelar"
+        variant="danger"
+        loading={deleting}
+      />
+
+      <SuccessModal
+        isOpen={showSuccessModal}
+        onClose={() => {
+          setShowSuccessModal(false);
+          onTicketUpdated();
+          onClose();
+        }}
+        title={successData.title}
+        message={successData.message}
+        details={successData.details}
+      />
+
+      <ErrorModal
+        isOpen={showErrorModal}
+        onClose={() => setShowErrorModal(false)}
+        title={errorData.title}
+        message={errorData.message}
+      />
     </>
   );
 }

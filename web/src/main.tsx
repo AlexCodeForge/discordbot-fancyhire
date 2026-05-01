@@ -7,6 +7,7 @@ import { Logs } from './pages/Logs';
 import { Members } from './pages/Members';
 import { ChannelsPage } from './pages/ChannelsPage';
 import { TicketMetrics } from './pages/TicketMetrics';
+import { RolesPage } from './pages/RolesPage';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import './index.css';
@@ -76,6 +77,14 @@ function AppRouter() {
         element={
           <ProtectedRoute>
             <TicketMetrics />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/roles"
+        element={
+          <ProtectedRoute>
+            <RolesPage />
           </ProtectedRoute>
         }
       />

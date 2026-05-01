@@ -488,6 +488,26 @@ client.on(Events.ChannelDelete, async (channel) => {
   }
 });
 
+client.on(Events.ChannelUpdate, async (oldChannel, newChannel) => {
+  if (newChannel.isDMBased() || !('guild' in newChannel) || !isSyncableChannelType(newChannel.type)) return;
+  
+  // Si cambió el parent_id (se movió de categoría) o cambió el nombre, sincronizar
+  const oldParent = 'parentId' in oldChannel ? (oldChannel as any).parentId : null;
+  const newParent = 'parentId' in newChannel ? (newChannel as any).parentId : null;
+  
+  if (oldChannel.name !== newChannel.name || oldParent !== newParent) {
+    try {
+      await axios.post(
+        `${config.apiUrl}/api/channels/sync`,
+        buildChannelSyncPayload(newChannel as GuildChannel)
+      );
+      console.log(`Canal ${newChannel.id} actualizado en API`);
+    } catch (error) {
+      console.error('Error al sincronizar canal actualizado:', error);
+    }
+  }
+});
+
 client.on(Events.MessageDelete, async (message) => {
   if (!message.guildId) return;
   try {
@@ -528,6 +548,7 @@ function parseChannelTypeInput(type: unknown): ChannelType {
     if (t === 'GUILD_ANNOUNCEMENT' || t === 'GUILD_NEWS' || t === '5')
       return ChannelType.GuildAnnouncement;
     if (t === 'GUILD_FORUM' || t === '15') return ChannelType.GuildForum;
+    if (t === 'GUILD_CATEGORY' || t === '4') return ChannelType.GuildCategory;
   }
   return ChannelType.GuildText;
 }
@@ -722,11 +743,12 @@ botHttpServer.post('/create-channel', async (req, res) => {
       type: channelType as
         | ChannelType.GuildText
         | ChannelType.GuildAnnouncement
-        | ChannelType.GuildForum,
+        | ChannelType.GuildForum
+        | ChannelType.GuildCategory,
       topic: topic && typeof topic === 'string' ? topic : undefined,
       parent: parentId && typeof parentId === 'string' ? parentId : undefined,
     });
-    res.json({ success: true, channel_id: created.id });
+    res.json({ success: true, discord_channel_id: created.id });
   } catch (error) {
     console.error('Error en create-channel:', error);
     res.status(500).json({
@@ -754,6 +776,52 @@ botHttpServer.delete('/delete-channel', async (req, res) => {
     console.error('Error en delete-channel:', error);
     res.status(500).json({
       error: 'Error al eliminar canal',
+      message: error instanceof Error ? error.message : 'Error desconocido',
+    });
+  }
+});
+
+botHttpServer.post('/move-channels', async (req, res) => {
+  const { discordChannelIds, targetCategoryId } = req.body;
+
+  if (!Array.isArray(discordChannelIds) || discordChannelIds.length === 0) {
+    return res.status(400).json({ error: 'discordChannelIds debe ser un array no vacío' });
+  }
+
+  const guild = client.guilds.cache.first();
+  if (!guild) {
+    return res.status(500).json({ error: 'No hay servidor disponible' });
+  }
+
+  try {
+    for (const discordChannelId of discordChannelIds) {
+      const discordChannel = await guild.channels.fetch(discordChannelId);
+      
+      if (discordChannel && 'setParent' in discordChannel) {
+        await (discordChannel as any).setParent(targetCategoryId, {
+          lockPermissions: false
+        });
+        console.log(`Canal ${discordChannel.name} movido a categoría ${targetCategoryId || 'sin categoría'}`);
+        
+        // Sincronizar el cambio con la API inmediatamente
+        const payload = {
+          discord_channel_id: discordChannel.id,
+          name: discordChannel.name,
+          type: discordChannel.type,
+          position: 'position' in discordChannel ? (discordChannel as any).position : 0,
+          parent_id: discordChannel.parentId ?? null,
+          topic: 'topic' in discordChannel ? (discordChannel as any).topic : null,
+        };
+        
+        await axios.post(`${config.apiUrl}/api/channels/sync`, payload);
+      }
+    }
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error en move-channels:', error);
+    res.status(500).json({
+      error: 'Error al mover canales',
       message: error instanceof Error ? error.message : 'Error desconocido',
     });
   }
@@ -816,6 +884,25 @@ botHttpServer.post('/transfer-ticket', async (req, res) => {
   }
 });
 
+botHttpServer.get('/check-channel/:channelId', async (req, res) => {
+  const { channelId } = req.params;
+
+  if (!channelId) {
+    return res.status(400).json({ error: 'channelId is required' });
+  }
+
+  try {
+    const channel = await client.channels.fetch(channelId).catch(() => null);
+    res.json({ exists: !!channel });
+  } catch (error) {
+    console.error('Error checking channel:', error);
+    res.status(500).json({
+      error: 'Error checking channel',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
 botHttpServer.delete('/delete-ticket-channel/:channelId', async (req, res) => {
   const { channelId } = req.params;
 
@@ -830,6 +917,267 @@ botHttpServer.delete('/delete-ticket-channel/:channelId', async (req, res) => {
     console.error('Error deleting ticket channel:', error);
     res.status(500).json({
       error: 'Error deleting ticket channel',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+botHttpServer.post('/create-role', async (req, res) => {
+  const { guildId, name, color, permissions, hoist, mentionable } = req.body;
+
+  if (!guildId || !name) {
+    return res.status(400).json({ error: 'guildId and name are required' });
+  }
+
+  try {
+    const guild = await client.guilds.fetch(guildId);
+    const botMember = guild.members.me;
+
+    if (!botMember) {
+      return res.status(500).json({ error: 'Bot not found in guild' });
+    }
+
+    if (!botMember.permissions.has('ManageRoles')) {
+      return res.status(403).json({ 
+        error: 'El bot no tiene el permiso "Manage Roles"' 
+      });
+    }
+
+    const role = await guild.roles.create({
+      name,
+      color: color ? parseInt(color.replace('#', ''), 16) : undefined,
+      permissions: permissions || [],
+      hoist: hoist || false,
+      mentionable: mentionable || false,
+    });
+
+    console.log(`Rol creado: ${role.name} (${role.id})`);
+    res.json({ 
+      success: true, 
+      role: {
+        id: role.id,
+        name: role.name,
+        color: role.hexColor,
+        position: role.position,
+        permissions: role.permissions.bitfield.toString(),
+        hoist: role.hoist,
+        mentionable: role.mentionable,
+        managed: role.managed
+      }
+    });
+  } catch (error) {
+    console.error('Error creating role:', error);
+    res.status(500).json({
+      error: 'Error al crear rol',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+botHttpServer.patch('/roles/:roleId', async (req, res) => {
+  const { roleId } = req.params;
+  const { guildId, name, color, permissions, hoist, mentionable } = req.body;
+
+  if (!guildId) {
+    return res.status(400).json({ error: 'guildId is required' });
+  }
+
+  try {
+    const guild = await client.guilds.fetch(guildId);
+    const role = guild.roles.cache.get(roleId);
+    
+    if (!role) {
+      return res.status(404).json({ error: 'Role not found' });
+    }
+
+    if (role.managed) {
+      return res.status(403).json({ 
+        error: 'No se pueden editar roles gestionados por integraciones' 
+      });
+    }
+
+    const botMember = guild.members.me;
+    if (!botMember) {
+      return res.status(500).json({ error: 'Bot not found in guild' });
+    }
+
+    if (!botMember.permissions.has('ManageRoles')) {
+      return res.status(403).json({ 
+        error: 'El bot no tiene el permiso "Manage Roles"' 
+      });
+    }
+
+    const highestBotRole = botMember.roles.highest;
+    if (role.position > highestBotRole.position) {
+      return res.status(403).json({ 
+        error: `El rol "${role.name}" está por encima del rol del bot. Mueve el rol del bot más arriba en Discord.` 
+      });
+    }
+
+    const updateData: any = {};
+    if (name !== undefined) updateData.name = name;
+    if (color !== undefined) updateData.color = parseInt(color.replace('#', ''), 16);
+    if (permissions !== undefined) updateData.permissions = permissions;
+    if (hoist !== undefined) updateData.hoist = hoist;
+    if (mentionable !== undefined) updateData.mentionable = mentionable;
+
+    await role.edit(updateData);
+
+    console.log(`Rol actualizado: ${role.name} (${role.id})`);
+    res.json({ 
+      success: true,
+      role: {
+        id: role.id,
+        name: role.name,
+        color: role.hexColor,
+        position: role.position,
+        permissions: role.permissions.bitfield.toString(),
+        hoist: role.hoist,
+        mentionable: role.mentionable,
+        managed: role.managed
+      }
+    });
+  } catch (error) {
+    console.error('Error updating role:', error);
+    res.status(500).json({
+      error: 'Error al actualizar rol',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+botHttpServer.delete('/roles/:roleId', async (req, res) => {
+  const { roleId } = req.params;
+  const { guildId } = req.body;
+
+  if (!guildId) {
+    return res.status(400).json({ error: 'guildId is required' });
+  }
+
+  try {
+    const guild = await client.guilds.fetch(guildId);
+    const role = guild.roles.cache.get(roleId);
+    
+    if (!role) {
+      return res.status(404).json({ error: 'Role not found' });
+    }
+
+    if (role.managed) {
+      return res.status(403).json({ 
+        error: 'No se pueden eliminar roles gestionados por integraciones' 
+      });
+    }
+
+    const botMember = guild.members.me;
+    if (!botMember) {
+      return res.status(500).json({ error: 'Bot not found in guild' });
+    }
+
+    if (!botMember.permissions.has('ManageRoles')) {
+      return res.status(403).json({ 
+        error: 'El bot no tiene el permiso "Manage Roles"' 
+      });
+    }
+
+    const highestBotRole = botMember.roles.highest;
+    if (role.position > highestBotRole.position) {
+      return res.status(403).json({ 
+        error: `El rol "${role.name}" está por encima del rol del bot. Mueve el rol del bot más arriba en Discord.` 
+      });
+    }
+
+    await role.delete();
+    console.log(`Rol eliminado: ${role.name} (${role.id})`);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting role:', error);
+    res.status(500).json({
+      error: 'Error al eliminar rol',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+botHttpServer.put('/roles/:roleId/position', async (req, res) => {
+  const { roleId } = req.params;
+  const { guildId, position } = req.body;
+
+  if (!guildId || position === undefined) {
+    return res.status(400).json({ error: 'guildId and position are required' });
+  }
+
+  try {
+    const guild = await client.guilds.fetch(guildId);
+    const role = guild.roles.cache.get(roleId);
+    
+    if (!role) {
+      return res.status(404).json({ error: 'Role not found' });
+    }
+
+    if (role.managed) {
+      return res.status(403).json({ 
+        error: 'No se pueden reordenar roles gestionados por integraciones' 
+      });
+    }
+
+    const botMember = guild.members.me;
+    if (!botMember) {
+      return res.status(500).json({ error: 'Bot not found in guild' });
+    }
+
+    if (!botMember.permissions.has('ManageRoles')) {
+      return res.status(403).json({ 
+        error: 'El bot no tiene el permiso "Manage Roles"' 
+      });
+    }
+
+    const highestBotRole = botMember.roles.highest;
+    
+    if (role.position > highestBotRole.position) {
+      return res.status(403).json({ 
+        error: `El rol "${role.name}" está por encima del rol del bot. Mueve el rol del bot más arriba en Discord.` 
+      });
+    }
+
+    if (position > highestBotRole.position) {
+      return res.status(403).json({ 
+        error: `No puedes mover un rol por encima del rol del bot. El rol del bot está en posición ${highestBotRole.position}.` 
+      });
+    }
+
+    await role.setPosition(position);
+    console.log(`Rol reordenado: ${role.name} a posición ${position}`);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error reordering role:', error);
+    res.status(500).json({
+      error: 'Error al reordenar rol',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+botHttpServer.get('/roles/:roleId/members-count', async (req, res) => {
+  const { roleId } = req.params;
+  const { guildId } = req.query;
+
+  if (!guildId) {
+    return res.status(400).json({ error: 'guildId is required' });
+  }
+
+  try {
+    const guild = await client.guilds.fetch(guildId as string);
+    const role = guild.roles.cache.get(roleId);
+    
+    if (!role) {
+      return res.status(404).json({ error: 'Role not found' });
+    }
+
+    res.json({ count: role.members.size });
+  } catch (error) {
+    console.error('Error getting role members count:', error);
+    res.status(500).json({
+      error: 'Error al obtener contador de miembros',
       message: error instanceof Error ? error.message : 'Unknown error'
     });
   }
