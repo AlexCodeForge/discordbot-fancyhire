@@ -68,7 +68,7 @@ DO NOT change proxy target or ports.
 - Use modern discord.js patterns (slash commands, interactions, intents)
 
 ## Logging System
-- Use `Logger` from `api/src/utils/Logger.ts` for all logging
+- Use `Logger` from `api/src/shared/utils/Logger.ts` for all logging
 - Methods: `Logger.error()`, `Logger.warning()`, `Logger.info()`, `Logger.debug()`
 - Pass request object as last parameter for context
 - Logs stored in PostgreSQL `system_logs` table
