@@ -16,6 +16,7 @@ import { LeadCard } from './components/leads/LeadCard';
 import { LeadModal } from './components/leads/LeadModal';
 import { CreateLeadForm } from './components/leads/CreateLeadForm';
 import { Layout } from './components/ui/Layout';
+import { discordApi, DiscordMember } from './services/discord';
 
 function App() {
   const [leads, setLeads] = useState<Lead[]>([]);
@@ -23,6 +24,7 @@ function App() {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [activeLead, setActiveLead] = useState<Lead | null>(null);
   const [loading, setLoading] = useState(true);
+  const [discordMembers, setDiscordMembers] = useState<Map<string, DiscordMember>>(new Map());
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -34,7 +36,11 @@ function App() {
 
   useEffect(() => {
     loadLeads();
-    const interval = setInterval(loadLeads, 30000);
+    loadDiscordMembers();
+    const interval = setInterval(() => {
+      loadLeads();
+      loadDiscordMembers();
+    }, 30000);
     return () => clearInterval(interval);
   }, []);
 
@@ -46,6 +52,19 @@ function App() {
       console.error('Error cargando leads:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadDiscordMembers = async () => {
+    try {
+      const members = await discordApi.getMembers();
+      const membersMap = new Map<string, DiscordMember>();
+      members.forEach(member => {
+        membersMap.set(member.id, member);
+      });
+      setDiscordMembers(membersMap);
+    } catch (error) {
+      console.error('Error cargando miembros de Discord:', error);
     }
   };
 
@@ -194,6 +213,7 @@ function App() {
                   stage={stage}
                   leads={getLeadsByStage(stage)}
                   onLeadClick={setSelectedLead}
+                  discordMembers={discordMembers}
                 />
               ))}
             </div>
@@ -201,7 +221,12 @@ function App() {
             <DragOverlay>
               {activeLead ? (
                 <div className="rotate-3">
-                  <LeadCard lead={activeLead} onClick={() => {}} />
+                  <LeadCard 
+                    lead={activeLead} 
+                    onClick={() => {}}
+                    discordMember={activeLead.discord_id ? discordMembers.get(activeLead.discord_id) : null}
+                    isDragOverlay={true}
+                  />
                 </div>
               ) : null}
             </DragOverlay>

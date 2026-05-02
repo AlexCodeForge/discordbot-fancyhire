@@ -1,15 +1,16 @@
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { Lead } from '../../types/Lead';
-import { useState, useEffect } from 'react';
-import { discordApi, DiscordMember } from '../../services/discord';
+import { DiscordMember } from '../../services/discord';
 
 interface LeadCardProps {
   lead: Lead;
   onClick: () => void;
+  discordMember?: DiscordMember | null;
+  isDragOverlay?: boolean;
 }
 
-export function LeadCard({ lead, onClick }: LeadCardProps) {
+export function LeadCard({ lead, onClick, discordMember = null, isDragOverlay = false }: LeadCardProps) {
   const {
     attributes,
     listeners,
@@ -18,23 +19,10 @@ export function LeadCard({ lead, onClick }: LeadCardProps) {
     transition,
     isDragging,
     isOver,
-  } = useSortable({ id: lead.id });
-
-  const [discordMember, setDiscordMember] = useState<DiscordMember | null>(null);
-
-  useEffect(() => {
-    const loadMemberData = async () => {
-      if (!lead.discord_id) return;
-      try {
-        const members = await discordApi.getMembers();
-        const member = members.find(m => m.id === lead.discord_id);
-        if (member) setDiscordMember(member);
-      } catch (error) {
-        console.error('Error loading member data:', error);
-      }
-    };
-    loadMemberData();
-  }, [lead.discord_id]);
+  } = useSortable({ 
+    id: lead.id,
+    disabled: isDragOverlay
+  });
 
   const style = {
     transform: CSS.Transform.toString(transform),

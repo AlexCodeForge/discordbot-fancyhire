@@ -33,7 +33,10 @@ router.post('/', async (req, res, next) => {
     const lead = await LeadModel.create(req.body);
     Logger.info('Lead creado', { leadId: lead.id, discordId: lead.discord_id }, req);
     res.status(201).json(lead);
-  } catch (error) {
+  } catch (error: any) {
+    if (error.message && error.message.includes('Ya existe un lead')) {
+      return res.status(409).json({ message: error.message });
+    }
     next(error);
   }
 });
@@ -41,9 +44,9 @@ router.post('/', async (req, res, next) => {
 router.patch('/:id', async (req, res, next) => {
   try {
     const id = parseInt(req.params.id);
-    const changed_by = req.body.changed_by;
+    const { changed_by, ...leadData } = req.body;
     
-    const lead = await LeadModel.update(id, req.body, changed_by);
+    const lead = await LeadModel.update(id, leadData, changed_by);
 
     if (!lead) {
       return res.status(404).json({ error: 'Lead no encontrado' });
@@ -51,7 +54,7 @@ router.patch('/:id', async (req, res, next) => {
 
     Logger.info('Lead actualizado', { 
       leadId: id, 
-      changes: Object.keys(req.body).filter(k => k !== 'changed_by'),
+      changes: Object.keys(leadData),
       changed_by 
     }, req);
 

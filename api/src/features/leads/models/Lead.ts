@@ -64,6 +64,17 @@ export class LeadModel {
       source = 'manual',
     } = data;
 
+    // Check if lead with this discord_id already exists
+    if (discord_id) {
+      const existingLead = await pool.query(
+        'SELECT id FROM leads WHERE discord_id = $1',
+        [discord_id]
+      );
+      if (existingLead.rows.length > 0) {
+        throw new Error('Ya existe un lead con este usuario de Discord');
+      }
+    }
+
     const maxOrderResult = await pool.query(
       'SELECT COALESCE(MAX(display_order), 0) + 1 as next_order FROM leads WHERE stage = $1',
       [stage]
@@ -88,8 +99,10 @@ export class LeadModel {
     const values: any[] = [];
     let paramCount = 1;
 
+    const excludedFields = ['id', 'created_at', 'updated_at', 'changed_by', 'unread_count'];
+
     Object.entries(data).forEach(([key, value]) => {
-      if (value !== undefined && key !== 'id' && key !== 'created_at' && key !== 'updated_at') {
+      if (value !== undefined && !excludedFields.includes(key)) {
         updates.push(`${key} = $${paramCount}`);
         values.push(value);
         paramCount++;

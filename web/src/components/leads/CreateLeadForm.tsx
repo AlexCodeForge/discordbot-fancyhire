@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { api } from '../../services/api';
 import { SuccessModal } from '../ui/modals/SuccessModal';
+import { ErrorModal } from '../ui/modals/ErrorModal';
 
 interface CreateLeadFormProps {
   onClose: () => void;
@@ -29,6 +30,8 @@ export function CreateLeadForm({ onClose, onSuccess }: CreateLeadFormProps) {
     title: string;
     message: string;
   } | null>(null);
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
 
   useEffect(() => {
     loadMembers();
@@ -66,7 +69,8 @@ export function CreateLeadForm({ onClose, onSuccess }: CreateLeadFormProps) {
     e.preventDefault();
 
     if (!selectedMember) {
-      alert('Selecciona un miembro del servidor');
+      setErrorMessage('Debes seleccionar un miembro del servidor');
+      setShowErrorModal(true);
       return;
     }
 
@@ -86,9 +90,16 @@ export function CreateLeadForm({ onClose, onSuccess }: CreateLeadFormProps) {
         message: 'El lead ha sido agregado correctamente',
       });
       onSuccess();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creando lead:', error);
-      alert('Error al crear el lead');
+      const message = error.response?.data?.message || error.response?.data?.error || error.message;
+      
+      if (message?.includes('duplicate') || message?.includes('unique') || message?.includes('ya existe')) {
+        setErrorMessage('Este usuario ya existe como lead en el sistema');
+      } else {
+        setErrorMessage(message || 'Error al crear el lead. Intenta nuevamente.');
+      }
+      setShowErrorModal(true);
     } finally {
       setLoading(false);
     }
@@ -104,6 +115,13 @@ export function CreateLeadForm({ onClose, onSuccess }: CreateLeadFormProps) {
         }}
         title={successMessage?.title || ''}
         message={successMessage?.message || ''}
+      />
+
+      <ErrorModal
+        isOpen={showErrorModal}
+        onClose={() => setShowErrorModal(false)}
+        title="Error al Crear Lead"
+        message={errorMessage}
       />
 
       <div className="fixed inset-0 flex items-center justify-center z-50 p-4" style={{ 

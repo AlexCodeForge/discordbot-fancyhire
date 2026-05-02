@@ -2,11 +2,13 @@ import { useDroppable } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { Lead, LeadStage, STAGE_LABELS } from '../../types/Lead';
 import { LeadCard } from './LeadCard';
+import { DiscordMember } from '../../services/discord';
 
 interface KanbanColumnProps {
   stage: LeadStage;
   leads: Lead[];
   onLeadClick: (lead: Lead) => void;
+  discordMembers: Map<string, DiscordMember>;
 }
 
 const STAGE_COLORS: Record<LeadStage, { bgVar: string; borderVar: string }> = {
@@ -18,7 +20,7 @@ const STAGE_COLORS: Record<LeadStage, { bgVar: string; borderVar: string }> = {
   perdido: { bgVar: 'var(--bmw-surface-card)', borderVar: 'var(--bmw-error)' },
 };
 
-export function KanbanColumn({ stage, leads, onLeadClick }: KanbanColumnProps) {
+export function KanbanColumn({ stage, leads, onLeadClick, discordMembers }: KanbanColumnProps) {
   const { setNodeRef, isOver } = useDroppable({ id: stage });
   const stageColor = STAGE_COLORS[stage];
 
@@ -59,6 +61,7 @@ export function KanbanColumn({ stage, leads, onLeadClick }: KanbanColumnProps) {
               key={lead.id}
               lead={lead}
               onClick={() => onLeadClick(lead)}
+              discordMember={lead.discord_id ? discordMembers.get(lead.discord_id) : null}
             />
           ))}
         </SortableContext>

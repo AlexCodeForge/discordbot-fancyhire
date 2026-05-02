@@ -64,7 +64,6 @@ export function LeadModal({ lead, onClose, onUpdate }: LeadModalProps) {
         title: 'Lead Actualizado',
         message: 'Los cambios han sido guardados',
       });
-      onUpdate();
     } catch (error: any) {
       console.error('Error actualizando lead:', error);
       setErrorMessage(error.response?.data?.message || error.message || 'Error al actualizar el lead');
@@ -83,7 +82,6 @@ export function LeadModal({ lead, onClose, onUpdate }: LeadModalProps) {
         title: 'Lead Eliminado',
         message: 'El lead ha sido eliminado del sistema',
       });
-      onUpdate();
     } catch (error: any) {
       console.error('Error eliminando lead:', error);
       setErrorMessage(error.response?.data?.message || error.message || 'Error al eliminar el lead');
@@ -100,7 +98,10 @@ export function LeadModal({ lead, onClose, onUpdate }: LeadModalProps) {
         isOpen={!!successMessage}
         onClose={() => {
           setSuccessMessage(null);
-          onClose();
+          onUpdate();
+          if (successMessage?.title === 'Lead Eliminado') {
+            onClose();
+          }
         }}
         title={successMessage?.title || ''}
         message={successMessage?.message || ''}
@@ -232,20 +233,30 @@ export function LeadModal({ lead, onClose, onUpdate }: LeadModalProps) {
               <input
                 type="text"
                 value={editedLead.name}
-                onChange={(e) => setEditedLead({ ...editedLead, name: e.target.value })}
+                readOnly
                 className="bmw-input w-full"
+                style={{ 
+                  backgroundColor: 'var(--bmw-surface-soft)',
+                  cursor: 'not-allowed',
+                  opacity: 0.7
+                }}
               />
             </div>
 
             <div>
               <label className="bmw-label block mb-1">
-                Contacto Discord
+                Contacto Discord (UID)
               </label>
               <input
                 type="text"
-                value={editedLead.contact_discord}
-                onChange={(e) => setEditedLead({ ...editedLead, contact_discord: e.target.value })}
+                value={editedLead.discord_id || editedLead.contact_discord}
+                readOnly
                 className="bmw-input w-full"
+                style={{ 
+                  backgroundColor: 'var(--bmw-surface-soft)',
+                  cursor: 'not-allowed',
+                  opacity: 0.7
+                }}
               />
             </div>
 
