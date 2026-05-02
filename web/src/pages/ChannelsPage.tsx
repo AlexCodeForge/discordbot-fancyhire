@@ -8,6 +8,7 @@ import { CreateChannelModal } from '../components/channels/modals/CreateChannelM
 import { ManageCategoriesModal } from '../components/channels/modals/ManageCategoriesModal';
 import { MoveChannelsModal } from '../components/channels/modals/MoveChannelsModal';
 import { SuccessModal } from '../components/ui/modals/SuccessModal';
+import { ConfirmationModal } from '../components/ui/modals/ConfirmationModal';
 import { api } from '../services/api';
 import { Channel } from '../types/Channel';
 import { ChannelMessage, CreateChannelData } from '../types/ChannelMessage';
@@ -30,6 +31,8 @@ export function ChannelsPage() {
     title: string;
     message: string;
   } | null>(null);
+  const [messageToDelete, setMessageToDelete] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const loadChannels = useCallback(async () => {
     try {
@@ -180,18 +183,29 @@ export function ChannelsPage() {
   };
 
   const handleDeleteMessage = (discordMessageId: string) => {
-    if (!selectedChannel) return;
-    void (async () => {
-      try {
-        await api.deleteChannelMessage(selectedChannel.id, discordMessageId);
-        setMessages((prev) => prev.filter((m) => m.discord_message_id !== discordMessageId));
-      } catch (e) {
-        const msg = e instanceof Error ? e.message : 'No se pudo eliminar el mensaje';
-        logError(msg);
-        setBannerError(msg);
-        void loadMessages(selectedChannel.id);
-      }
-    })();
+    setMessageToDelete(discordMessageId);
+  };
+
+  const confirmDeleteMessage = async () => {
+    if (!selectedChannel || !messageToDelete) return;
+    
+    setIsDeleting(true);
+    try {
+      await api.deleteChannelMessage(selectedChannel.id, messageToDelete);
+      setMessages((prev) => prev.filter((m) => m.discord_message_id !== messageToDelete));
+      setMessageToDelete(null);
+      setSuccessMessage({
+        title: 'Mensaje Eliminado',
+        message: 'El mensaje ha sido eliminado exitosamente.',
+      });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'No se pudo eliminar el mensaje';
+      logError(msg);
+      setBannerError(msg);
+      void loadMessages(selectedChannel.id);
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   const handleMoveChannels = async (channelIds: number[], targetCategoryId: string | null) => {
@@ -323,6 +337,17 @@ export function ChannelsPage() {
         channels={channels}
         onMoveChannels={handleMoveChannels}
         onDeleteChannels={handleDeleteChannels}
+      />
+
+      <ConfirmationModal
+        isOpen={!!messageToDelete}
+        onClose={() => setMessageToDelete(null)}
+        onConfirm={confirmDeleteMessage}
+        title="Eliminar Mensaje"
+        message="¿Estás seguro de que deseas eliminar este mensaje? Esta acción no se puede deshacer."
+        confirmText="Eliminar"
+        variant="danger"
+        loading={isDeleting}
       />
 
       <SuccessModal
