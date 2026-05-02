@@ -188,13 +188,35 @@ export function ChannelsPage() {
   const handleMoveChannels = async (channelIds: number[], targetCategoryId: string | null) => {
     try {
       await api.moveChannels(channelIds, targetCategoryId);
-      // Esperar un momento para que se sincronice
       await new Promise(resolve => setTimeout(resolve, 1000));
       await loadChannels();
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'No se pudieron mover los canales';
       logError(msg);
       setBannerError(msg);
+    }
+  };
+
+  const handleDeleteChannels = async (channelIds: number[]) => {
+    try {
+      const channelsToDelete = channels.filter(ch => channelIds.includes(ch.id));
+      
+      for (const channel of channelsToDelete) {
+        await api.deleteChannel(channel.discord_channel_id);
+      }
+      
+      if (selectedChannel && channelIds.includes(selectedChannel.id)) {
+        setSelectedChannel(null);
+        setMessages([]);
+      }
+      
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      await loadChannels();
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'No se pudieron eliminar los canales';
+      logError(msg);
+      setBannerError(msg);
+      throw e;
     }
   };
 
@@ -291,6 +313,7 @@ export function ChannelsPage() {
         onClose={() => setIsMoveChannelsOpen(false)}
         channels={channels}
         onMoveChannels={handleMoveChannels}
+        onDeleteChannels={handleDeleteChannels}
       />
     </Layout>
   );

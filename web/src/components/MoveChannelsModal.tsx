@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react';
 import type { Channel } from '../types/Channel';
 import { isCategoryChannel } from './ChannelSidebarImproved';
+import { ConfirmationModal } from './ConfirmationModal';
 
 export interface MoveChannelsModalProps {
   isOpen: boolean;
   onClose: () => void;
   channels: Channel[];
   onMoveChannels: (channelIds: number[], targetCategoryId: string | null) => Promise<void>;
+  onDeleteChannels: (channelIds: number[]) => Promise<void>;
 }
 
 export function MoveChannelsModal({
@@ -14,6 +16,7 @@ export function MoveChannelsModal({
   onClose,
   channels,
   onMoveChannels,
+  onDeleteChannels,
 }: MoveChannelsModalProps) {
   const [mounted, setMounted] = useState(isOpen);
   const [visible, setVisible] = useState(isOpen);
@@ -21,6 +24,8 @@ export function MoveChannelsModal({
   const [targetCategoryId, setTargetCategoryId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -38,7 +43,9 @@ export function MoveChannelsModal({
       setSelectedChannelIds(new Set());
       setTargetCategoryId(null);
       setLoading(false);
+      setDeleting(false);
       setError(null);
+      setShowDeleteConfirm(false);
     }
   }, [isOpen]);
 
@@ -82,6 +89,30 @@ export function MoveChannelsModal({
       setError(err instanceof Error ? err.message : 'Error al mover canales');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDelete = () => {
+    if (selectedChannelIds.size === 0) {
+      setError('Selecciona al menos un canal');
+      return;
+    }
+    setShowDeleteConfirm(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    setDeleting(true);
+    setError(null);
+
+    try {
+      await onDeleteChannels(Array.from(selectedChannelIds));
+      setShowDeleteConfirm(false);
+      onClose();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al eliminar canales');
+      setShowDeleteConfirm(false);
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -267,7 +298,7 @@ export function MoveChannelsModal({
           )}
 
           <div
-            className="flex justify-end gap-2 shrink-0"
+            className="flex justify-between shrink-0"
             style={{
               padding: 'var(--bmw-spacing-lg)',
               borderTop: '1px solid var(--bmw-hairline)',
@@ -275,22 +306,65 @@ export function MoveChannelsModal({
           >
             <button
               type="button"
-              onClick={onClose}
-              disabled={loading}
-              className="bmw-btn-secondary"
+              onClick={handleDelete}
+              disabled={loading || deleting || selectedChannelIds.size === 0}
+              style={{
+                backgroundColor: 'transparent',
+                color: 'var(--bmw-error)',
+                border: '1px solid var(--bmw-error)',
+                padding: '14px 24px',
+                borderRadius: '0',
+                fontSize: '14px',
+                fontWeight: '700',
+                letterSpacing: '0.5px',
+                cursor: loading || deleting || selectedChannelIds.size === 0 ? 'not-allowed' : 'pointer',
+                opacity: loading || deleting || selectedChannelIds.size === 0 ? 0.5 : 1,
+                transition: 'all 150ms ease',
+              }}
+              onMouseEnter={(e) => {
+                if (!loading && !deleting && selectedChannelIds.size > 0) {
+                  e.currentTarget.style.backgroundColor = 'rgba(220, 38, 38, 0.1)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!loading && !deleting && selectedChannelIds.size > 0) {
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                }
+              }}
             >
-              Cancelar
+              Eliminar {selectedChannelIds.size} canal(es)
             </button>
-            <button
-              type="submit"
-              disabled={loading || selectedChannelIds.size === 0}
-              className="bmw-btn-primary"
-            >
-              {loading ? 'Moviendo...' : `Mover ${selectedChannelIds.size} canal(es)`}
-            </button>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={onClose}
+                disabled={loading || deleting}
+                className="bmw-btn-secondary"
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                disabled={loading || deleting || selectedChannelIds.size === 0}
+                className="bmw-btn-primary"
+              >
+                {loading ? 'Moviendo...' : `Mover ${selectedChannelIds.size} canal(es)`}
+              </button>
+            </div>
           </div>
         </form>
       </div>
+
+      <ConfirmationModal
+        isOpen={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+        onConfirm={handleConfirmDelete}
+        title="Eliminar Canales"
+        message={`¿Estás seguro de que deseas eliminar ${selectedChannelIds.size} canal(es)? Esta acción no se puede deshacer.`}
+        confirmText="Eliminar"
+        variant="danger"
+        loading={deleting}
+      />
     </div>
   );
 }
