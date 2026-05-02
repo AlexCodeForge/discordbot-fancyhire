@@ -9,6 +9,7 @@ import { ChannelsPage } from './pages/ChannelsPage';
 import { TicketMetrics } from './pages/TicketMetrics';
 import { RolesPage } from './pages/RolesPage';
 import { Announcements } from './pages/Announcements';
+import { AutoMessages } from './pages/AutoMessages';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import './index.css';
@@ -94,6 +95,14 @@ function AppRouter() {
         element={
           <ProtectedRoute>
             <Announcements />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/auto-messages"
+        element={
+          <ProtectedRoute>
+            <AutoMessages />
           </ProtectedRoute>
         }
       />

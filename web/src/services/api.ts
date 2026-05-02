@@ -462,4 +462,49 @@ export const api = {
       handleApiError(err, 'deleteThreadMessage');
     }
   },
+
+  async getAllAutoMessages() {
+    try {
+      const response = await axios.get(`${API_BASE}/api/auto-messages`);
+      return response.data;
+    } catch (err) {
+      handleApiError(err, 'getAllAutoMessages');
+    }
+  },
+
+  async getAutoMessageByType(type: string) {
+    try {
+      const response = await axios.get(`${API_BASE}/api/auto-messages/${type}`);
+      return response.data;
+    } catch (err) {
+      handleApiError(err, 'getAutoMessageByType');
+    }
+  },
+
+  async updateAutoMessage(type: string, data: { content?: string; is_enabled?: boolean; description?: string }) {
+    try {
+      const response = await axios.put(`${API_BASE}/api/auto-messages/${type}`, data);
+      return response.data;
+    } catch (err) {
+      handleApiError(err, 'updateAutoMessage');
+    }
+  },
+
+  async previewAutoMessage(type: string, variables: Record<string, string | number>) {
+    try {
+      const response = await axios.post(`${API_BASE}/api/auto-messages/${type}/preview`, variables);
+      return response.data;
+    } catch (err) {
+      handleApiError(err, 'previewAutoMessage');
+    }
+  },
+
+  async resetAutoMessage(type: string) {
+    try {
+      const response = await axios.post(`${API_BASE}/api/auto-messages/${type}/reset`);
+      return response.data;
+    } catch (err) {
+      handleApiError(err, 'resetAutoMessage');
+    }
+  },
 };

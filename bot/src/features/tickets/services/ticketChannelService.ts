@@ -6,6 +6,7 @@ import {
   TextChannel,
   OverwriteType,
 } from 'discord.js';
+import { MessageTemplateService } from '../../../services/messageTemplateService';
 
 export class TicketChannelService {
   private client: Client;
@@ -114,7 +115,10 @@ export class TicketChannelService {
         topic: `Ticket para ${leadName}`,
       });
 
-      const welcomeMessage = `Ticket abierto para **${leadName}**.\nEste es un canal privado para gestionar la conversación.`;
+      const welcomeMessage = await MessageTemplateService.getMessageWithFallback('ticket_open', {
+        leadName,
+        leadId
+      });
       await channel.send(welcomeMessage);
 
       console.log(`Canal de ticket creado: ${channel.id} - ${channelName}`);
@@ -141,7 +145,10 @@ export class TicketChannelService {
 
       await channel.setParent(archiveCategory.id, { lockPermissions: false });
 
-      await channel.send('🔒 Este ticket ha sido cerrado y archivado.');
+      const closeMessage = await MessageTemplateService.getMessageWithFallback('ticket_close', {
+        channelName: channel.name
+      });
+      await channel.send(closeMessage);
 
       console.log(`Ticket ${channelId} archivado`);
     } catch (error) {
@@ -195,7 +202,11 @@ export class TicketChannelService {
 
       await this.updateChannelPermissions(channelId, newUserId, true);
 
-      await channel.send(`🔄 Ticket transferido a <@${newUserId}>`);
+      const transferMessage = await MessageTemplateService.getMessageWithFallback('ticket_transfer', {
+        newUserId,
+        newUserName: newUserId
+      });
+      await channel.send(transferMessage);
 
       console.log(`Ticket ${channelId} transferido de ${oldUserId} a ${newUserId}`);
     } catch (error) {

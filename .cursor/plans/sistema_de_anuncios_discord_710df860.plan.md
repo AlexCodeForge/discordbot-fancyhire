@@ -8,11 +8,14 @@ todos:
   - id: api-routes
     content: Implementar rutas API, modelo y servicio de anuncios
     status: pending
+  - id: ticket-identification
+    content: Agregar identificación de canales de tickets en endpoint GET /api/channels
+    status: pending
   - id: bot-endpoint
     content: Agregar endpoint /send-embed al bot HTTP server
     status: pending
   - id: frontend-components
-    content: "Crear componentes de UI: editor, preview, selector de canal"
+    content: "Crear componentes de UI: editor, preview, selector de canal con badges de tickets"
     status: pending
   - id: integration
     content: Integrar página de anuncios en App y probar flujo completo
@@ -163,12 +166,80 @@ Dropdown para seleccionar canal destino:
 - Mostrar solo canales de texto (type: GuildText, GuildAnnouncement)
 - Agrupados por categoría si aplica
 - Mostrar icono de canal
+- **Identificar canales de tickets:** Marcar visualmente canales que empiezan con `ticket-` usando badge/icono distintivo (ej: "TICKET" badge o icono de ticket)
+- Opcional: Toggle para filtrar canales de tickets del selector
 
 ### Ruta en App ([`web/src/App.tsx`](web/src/App.tsx))
 
 Agregar ruta `/announcements` protegida con `authMiddleware`.
 
-## 5. Tipos TypeScript
+## 5. Identificación de Canales de Tickets
+
+### Backend - Modificar ruta existente ([`api/src/features/channels/routes/channels.ts`](api/src/features/channels/routes/channels.ts))
+
+Modificar el endpoint `GET /api/channels` (línea 12-20) para agregar propiedad `isTicketChannel`:
+
+```typescript
+router.get('/', async (req, res, next) => {
+  try {
+    const channels = await ChannelModel.getAll();
+    const enrichedChannels = channels.map(channel => ({
+      ...channel,
+      isTicketChannel: channel.name.startsWith('ticket-')
+    }));
+    Logger.info('Canales listados', { count: enrichedChannels.length }, req);
+    res.json(enrichedChannels);
+  } catch (error) {
+    next(error);
+  }
+});
+```
+
+### Actualizar tipo Channel ([`api/src/features/channels/models/Channel.ts`](api/src/features/channels/models/Channel.ts))
+
+Agregar propiedad opcional al tipo (para respuestas API):
+
+```typescript
+export interface Channel {
+  id: number;
+  discord_channel_id: string;
+  name: string;
+  type: string;
+  position: number;
+  parent_id: string | null;
+  topic: string | null;
+  created_at: Date;
+  updated_at: Date;
+  isTicketChannel?: boolean;  // Agregado para identificación en frontend
+}
+```
+
+### Frontend ([`web/src/components/ChannelSelector.tsx`](web/src/components/ChannelSelector.tsx))
+
+- Renderizar badge "TICKET" o icono cuando `isTicketChannel === true`
+- Estilo visual distintivo (usar tokens de color BMW)
+- Opcional: Toggle/checkbox "Ocultar canales de tickets" para filtrado
+
+### Actualizar tipo frontend ([`web/src/types/Channel.ts`](web/src/types/Channel.ts))
+
+Agregar propiedad para identificación:
+
+```typescript
+export interface Channel {
+  id: number;
+  discord_channel_id: string;
+  name: string;
+  type: string;
+  position: number;
+  parent_id: string | null;
+  topic: string | null;
+  created_at: string;
+  updated_at: string;
+  isTicketChannel?: boolean;  // Agregado para identificación visual
+}
+```
+
+## 6. Tipos TypeScript
 
 ### Backend ([`api/src/types/Announcement.ts`](api/src/types/Announcement.ts))
 

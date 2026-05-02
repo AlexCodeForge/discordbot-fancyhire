@@ -22,6 +22,7 @@ import { TicketChannelService } from './features/tickets/services/ticketChannelS
 import { setupAnnouncementReactionListeners } from './features/announcements/events/announcementReactions';
 import { syncThreadCreate, syncAllThreads } from './features/forums/events/threadSync';
 import { syncThreadMessages } from './features/forums/events/threadMessageSync';
+import { MessageTemplateService } from './services/messageTemplateService';
 
 const BOT_STATUS_FILE = path.join(__dirname, '../../api/.bot-status.json');
 
@@ -351,13 +352,13 @@ client.on(Events.GuildMemberAdd, async (member: GuildMember) => {
       try {
         const adminChannel = await client.channels.fetch(config.adminChannelId);
         if (adminChannel?.isTextBased() && 'send' in adminChannel) {
-          await adminChannel.send(
-            `🆕 **Nuevo lead capturado automáticamente**\n` +
-            `👤 **Usuario:** ${member.user.tag}\n` +
-            `🆔 **ID:** ${member.id}\n` +
-            `📅 **Fecha:** ${new Date().toLocaleString('es-ES')}\n` +
-            `✅ Lead guardado en el CRM con ID: ${response.data.id}`
-          );
+          const message = await MessageTemplateService.getMessageWithFallback('admin_new_lead', {
+            username: member.user.tag,
+            userId: member.id,
+            leadId: response.data.id,
+            date: new Date().toLocaleString('es-ES')
+          });
+          await adminChannel.send(message);
         }
       } catch (channelError) {
         console.error('Error al notificar en canal admin:', channelError);
@@ -365,11 +366,12 @@ client.on(Events.GuildMemberAdd, async (member: GuildMember) => {
     }
 
     try {
-      await member.send(
-        `¡Bienvenido/a al servidor! 👋\n\n` +
-        `Gracias por unirte. Pronto nos pondremos en contacto contigo para conocer tus necesidades.\n\n` +
-        `Si tienes alguna pregunta, no dudes en contactarnos.`
-      );
+      const welcomeMessage = await MessageTemplateService.getMessageWithFallback('welcome_dm', {
+        username: member.user.tag,
+        userId: member.id,
+        serverName: member.guild.name
+      });
+      await member.send(welcomeMessage);
       console.log(`Mensaje de bienvenida enviado a ${member.user.tag}`);
     } catch (dmError) {
       console.log(`No se pudo enviar DM a ${member.user.tag} (probablemente DMs deshabilitados)`);
@@ -382,11 +384,11 @@ client.on(Events.GuildMemberAdd, async (member: GuildMember) => {
       try {
         const adminChannel = await client.channels.fetch(config.adminChannelId);
         if (adminChannel?.isTextBased() && 'send' in adminChannel) {
-          await adminChannel.send(
-            `⚠️ **Error al capturar lead**\n` +
-            `Usuario: ${member.user.tag}\n` +
-            `Error: ${error instanceof Error ? error.message : 'Error desconocido'}`
-          );
+          const errorMessage = await MessageTemplateService.getMessageWithFallback('admin_lead_error', {
+            username: member.user.tag,
+            error: error instanceof Error ? error.message : 'Error desconocido'
+          });
+          await adminChannel.send(errorMessage);
         }
       } catch (notifyError) {
         console.error('Error al notificar error en canal admin:', notifyError);
