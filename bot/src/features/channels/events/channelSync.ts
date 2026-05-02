@@ -57,7 +57,8 @@ export async function syncAllChannels(client: Client): Promise<void> {
       try {
         const ch = await client.channels.fetch(channelId);
         // Solo sincronizar si es un canal de texto que soporta mensajes
-        if (ch && ch.isTextBased() && 'messages' in ch) {
+        // EXCLUIR canales foro (tipo 15) porque solo contienen threads, no mensajes directos
+        if (ch && ch.isTextBased() && 'messages' in ch && ch.type !== ChannelType.GuildForum) {
           console.log(`[DEBUG] Sincronizando canal ${channelId}...`);
           await syncChannelMessages(client, channelId);
         }

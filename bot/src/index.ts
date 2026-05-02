@@ -20,6 +20,8 @@ import { syncAllChannels, buildChannelSyncPayload, isSyncableChannelType } from 
 import { buildChannelIncomingPayload } from './features/channels/events/channelMessageSync';
 import { TicketChannelService } from './features/tickets/services/ticketChannelService';
 import { setupAnnouncementReactionListeners } from './features/announcements/events/announcementReactions';
+import { syncThreadCreate, syncAllThreads } from './features/forums/events/threadSync';
+import { syncThreadMessages } from './features/forums/events/threadMessageSync';
 
 const BOT_STATUS_FILE = path.join(__dirname, '../../api/.bot-status.json');
 
@@ -283,6 +285,9 @@ client.once(Events.ClientReady, async (c) => {
 
   await syncAllChannels(client);
 
+  console.log('Sincronizando threads de foros...');
+  await syncAllThreads(client);
+
   console.log('[TICKET-SYNC] Sincronizando tickets existentes...');
   const guilds = client.guilds.cache;
   for (const [, guild] of guilds) {
@@ -419,6 +424,52 @@ client.on(Events.UserUpdate, async (oldUser, newUser) => {
 });
 
 client.on(Events.MessageCreate, async (message) => {
+  if (message.channel.isThread() && message.channel.parent?.type === ChannelType.GuildForum) {
+    let isStarterMessage = false;
+    try {
+      const starterMessage = await message.channel.fetchStarterMessage();
+      isStarterMessage = starterMessage?.id === message.id;
+    } catch (err) {
+      console.error(`[FORUM] Error verificando starter message: ${err}`);
+    }
+
+    if (message.author.bot && !isStarterMessage) return;
+
+    // Para el mensaje inicial, capturar contenido completo incluyendo embeds
+    let fullContent = message.content;
+    if (isStarterMessage && message.embeds.length > 0) {
+      const embed = message.embeds[0];
+      const embedParts = [];
+      
+      if (embed.title) embedParts.push(`**${embed.title}**`);
+      if (embed.description) embedParts.push(embed.description);
+      if (embed.url) embedParts.push(`Link: ${embed.url}`);
+      if (embed.image?.url) embedParts.push(`[Imagen: ${embed.image.url}]`);
+      
+      if (embedParts.length > 0) {
+        fullContent = embedParts.join('\n\n');
+      }
+    }
+
+    console.log(`[FORUM] Mensaje recibido en thread ${message.channel.name} de ${message.author.tag}`);
+    try {
+      await axios.post(`${config.apiUrl}/api/forum/threads/messages/incoming`, {
+        discord_thread_id: message.channel.id,
+        discord_message_id: message.id,
+        author_id: message.author.id,
+        author_name: message.author.tag,
+        author_avatar: message.author.displayAvatarURL(),
+        content: fullContent || 'Sin contenido',
+        mentions: message.mentions.users.map(u => u.id),
+        sent_at: message.createdAt.toISOString()
+      });
+      console.log(`[FORUM] Mensaje de thread guardado en BD: ${message.id}`);
+    } catch (error: any) {
+      console.error('[FORUM] Error guardando mensaje de thread:', error.response?.data || error.message);
+    }
+    return;
+  }
+
   if (message.author.bot) return;
 
   if (message.channel.type === ChannelType.DM) {
@@ -531,6 +582,38 @@ client.on(Events.MessageUpdate, async (_oldMsg, newMsg) => {
     });
   } catch (error) {
     console.error('Error al actualizar mensaje en API:', error);
+  }
+});
+
+client.on(Events.ThreadCreate, async (thread) => {
+  if (thread.parent?.type === ChannelType.GuildForum) {
+    console.log(`[FORUM] Nuevo thread creado: ${thread.name}`);
+    await syncThreadCreate(thread);
+    
+    // Esperar un momento para que Discord procese el mensaje inicial
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    // Sincronizar mensajes del thread (incluyendo el mensaje inicial)
+    await syncThreadMessages(client, thread.id);
+  }
+});
+
+client.on(Events.ThreadUpdate, async (oldThread, newThread) => {
+  if (newThread.parent?.type === ChannelType.GuildForum) {
+    console.log(`[FORUM] Thread actualizado: ${newThread.name}`);
+    await syncThreadCreate(newThread);
+  }
+});
+
+client.on(Events.ThreadDelete, async (thread) => {
+  if (thread.parent?.type === ChannelType.GuildForum) {
+    console.log(`[FORUM] Thread eliminado desde Discord: ${thread.name} (${thread.id})`);
+    try {
+      await axios.delete(`${config.apiUrl}/api/forum/threads/discord/${thread.id}`);
+      console.log(`[FORUM] Thread eliminado de la BD: ${thread.id}`);
+    } catch (error) {
+      console.error(`[FORUM] Error eliminando thread de BD:`, error);
+    }
   }
 });
 
@@ -1301,6 +1384,197 @@ botHttpServer.get('/roles/:roleId/members-count', async (req, res) => {
     console.error('Error getting role members count:', error);
     res.status(500).json({
       error: 'Error al obtener contador de miembros',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+botHttpServer.post('/create-forum-thread', async (req, res) => {
+  const { channelId, name, content, appliedTags, embedData, imageUrl } = req.body;
+
+  if (!channelId || !name || !content) {
+    return res.status(400).json({ error: 'channelId, name y content son requeridos' });
+  }
+
+  try {
+    const channel = await client.channels.fetch(channelId);
+    
+    if (!channel || channel.type !== ChannelType.GuildForum) {
+      return res.status(400).json({ error: 'El canal no es un foro' });
+    }
+
+    const messageOptions: any = { content };
+
+    // Agregar embed si se proporciona embedData completo
+    if (embedData && embedData.description) {
+      const embed = new EmbedBuilder();
+      if (embedData.title) embed.setTitle(embedData.title);
+      if (embedData.description) embed.setDescription(embedData.description);
+      if (embedData.color) {
+        const colorValue = embedData.color.startsWith('#') 
+          ? parseInt(embedData.color.substring(1), 16) 
+          : parseInt(embedData.color, 16);
+        embed.setColor(colorValue);
+      }
+      if (embedData.url) embed.setURL(embedData.url);
+      if (embedData.image_url) embed.setImage(embedData.image_url);
+      if (embedData.thumbnail_url) embed.setThumbnail(embedData.thumbnail_url);
+      if (embedData.footer_text) {
+        embed.setFooter({ 
+          text: embedData.footer_text,
+          iconURL: embedData.footer_icon_url || undefined
+        });
+      }
+      if (embedData.author_name) {
+        embed.setAuthor({ 
+          name: embedData.author_name,
+          iconURL: embedData.author_icon_url || undefined
+        });
+      }
+      
+      messageOptions.embeds = [embed];
+    }
+    // Si no hay embedData pero hay imageUrl, crear embed simple con imagen
+    else if (imageUrl && !embedData) {
+      const embed = new EmbedBuilder().setImage(imageUrl);
+      messageOptions.embeds = [embed];
+    }
+
+    const thread = await channel.threads.create({
+      name,
+      message: messageOptions,
+      appliedTags: appliedTags || []
+    });
+
+    // Obtener el mensaje inicial (starter message)
+    let startMessageId: string | null = null;
+    try {
+      const starterMessage = await thread.fetchStarterMessage();
+      if (starterMessage) {
+        startMessageId = starterMessage.id;
+      }
+    } catch (err) {
+      console.error(`No se pudo obtener starter message del thread ${thread.id}`);
+    }
+
+    console.log(`[FORUM] Thread creado: ${thread.name} (${thread.id}) con mensaje inicial ${startMessageId}`);
+    res.json({ 
+      success: true, 
+      discord_thread_id: thread.id,
+      start_message_id: startMessageId 
+    });
+  } catch (error) {
+    console.error('Error creando thread:', error);
+    res.status(500).json({
+      error: 'Error al crear thread',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+botHttpServer.post('/send-thread-message', async (req, res) => {
+  const { threadId, content, mentions } = req.body;
+
+  if (!threadId || !content) {
+    return res.status(400).json({ error: 'threadId y content son requeridos' });
+  }
+
+  try {
+    const thread = await client.channels.fetch(threadId);
+    
+    if (!thread || !thread.isThread()) {
+      return res.status(400).json({ error: 'El canal no es un thread' });
+    }
+
+    const message = await thread.send({
+      content,
+      allowedMentions: { users: Array.isArray(mentions) ? mentions : [] }
+    });
+
+    console.log(`[FORUM] Mensaje enviado a thread ${thread.name}: ${message.id}`);
+    res.json({ success: true, discord_message_id: message.id });
+  } catch (error) {
+    console.error('Error enviando mensaje a thread:', error);
+    res.status(500).json({
+      error: 'Error al enviar mensaje',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+botHttpServer.patch('/update-thread', async (req, res) => {
+  const { threadId, name, startMessageId, content } = req.body;
+
+  if (!threadId || !name) {
+    return res.status(400).json({ error: 'threadId y name son requeridos' });
+  }
+
+  try {
+    const thread = await client.channels.fetch(threadId);
+    
+    if (!thread || !thread.isThread()) {
+      return res.status(400).json({ error: 'El canal no es un thread' });
+    }
+
+    await thread.setName(name);
+    
+    if (content && startMessageId) {
+      try {
+        const starterMessage = await thread.messages.fetch(startMessageId);
+        if (starterMessage) {
+          await starterMessage.edit(content);
+        }
+      } catch (err) {
+        console.error(`[FORUM] No se pudo editar el mensaje inicial: ${err}`);
+      }
+    }
+
+    console.log(`[FORUM] Thread actualizado: ${thread.name}`);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error actualizando thread:', error);
+    res.status(500).json({
+      error: 'Error al actualizar thread',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+botHttpServer.delete('/delete-thread', async (req, res) => {
+  const { threadId } = req.body;
+
+  if (!threadId) {
+    return res.status(400).json({ error: 'threadId es requerido' });
+  }
+
+  try {
+    const thread = await client.channels.fetch(threadId);
+    
+    if (!thread || !thread.isThread()) {
+      return res.status(400).json({ error: 'El canal no es un thread' });
+    }
+
+    await thread.delete();
+    console.log(`[FORUM] Thread eliminado: ${threadId}`);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error eliminando thread:', error);
+    res.status(500).json({
+      error: 'Error al eliminar thread',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+botHttpServer.post('/force-sync-threads', async (req, res) => {
+  try {
+    console.log('[FORUM] Sincronización forzada de threads iniciada...');
+    await syncAllThreads(client);
+    res.json({ success: true, message: 'Sincronización completada' });
+  } catch (error) {
+    console.error('Error en sincronización forzada:', error);
+    res.status(500).json({
+      error: 'Error en sincronización',
       message: error instanceof Error ? error.message : 'Unknown error'
     });
   }

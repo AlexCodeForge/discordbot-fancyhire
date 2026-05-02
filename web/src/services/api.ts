@@ -2,6 +2,7 @@ import axios, { AxiosError } from 'axios';
 import { Channel } from '../types/Channel';
 import { ChannelMessage, CreateChannelData } from '../types/ChannelMessage';
 import { Lead, LeadHistory } from '../types/Lead';
+import { ForumThread, ThreadMessage } from '../types/ForumThread';
 
 const API_BASE = import.meta.env.DEV ? '' : '';
 const API_URL = `${API_BASE}/api/leads`;
@@ -374,6 +375,91 @@ export const api = {
       await axios.delete(`${API_BASE}/api/announcements/categories/${id}`);
     } catch (err) {
       handleApiError(err, 'deleteAnnouncementCategory');
+    }
+  },
+
+  async getForumThreads(channelId: number): Promise<ForumThread[]> {
+    try {
+      const response = await axios.get(`${API_BASE}/api/forum/threads/${channelId}`);
+      return response.data;
+    } catch (err) {
+      handleApiError(err, 'getForumThreads');
+    }
+  },
+
+  async getThreadMessages(threadId: number, limit?: number): Promise<ThreadMessage[]> {
+    try {
+      const url = limit
+        ? `${API_BASE}/api/forum/threads/${threadId}/messages?limit=${limit}`
+        : `${API_BASE}/api/forum/threads/${threadId}/messages`;
+      const response = await axios.get(url);
+      return response.data;
+    } catch (err) {
+      handleApiError(err, 'getThreadMessages');
+    }
+  },
+
+  async createForumThread(
+    channelId: number,
+    name: string,
+    content: string,
+    options?: {
+      embedData?: { title?: string; description?: string; color?: string; image_url?: string; thumbnail_url?: string; url?: string; author_name?: string; author_icon_url?: string; footer_text?: string; footer_icon_url?: string };
+      imageUrl?: string;
+    }
+  ): Promise<void> {
+    try {
+      await axios.post(`${API_BASE}/api/forum/threads/create`, {
+        channelId,
+        name,
+        content,
+        embedData: options?.embedData,
+        imageUrl: options?.imageUrl,
+      });
+    } catch (err) {
+      handleApiError(err, 'createForumThread');
+    }
+  },
+
+  async sendThreadMessage(threadId: number, content: string, mentions?: string[]): Promise<ThreadMessage> {
+    try {
+      const response = await axios.post(`${API_BASE}/api/forum/threads/messages/send`, {
+        threadId,
+        content,
+        mentions: mentions || []
+      });
+      return response.data;
+    } catch (err) {
+      handleApiError(err, 'sendThreadMessage');
+    }
+  },
+
+  async updateThread(threadId: number, name: string, content?: string): Promise<void> {
+    try {
+      await axios.patch(`${API_BASE}/api/forum/threads/${threadId}`, {
+        name,
+        content,
+      });
+    } catch (err) {
+      handleApiError(err, 'updateThread');
+    }
+  },
+
+  async deleteThread(threadId: number): Promise<void> {
+    try {
+      await axios.delete(`${API_BASE}/api/forum/threads/${threadId}`);
+    } catch (err) {
+      handleApiError(err, 'deleteThread');
+    }
+  },
+
+  async deleteThreadMessage(threadId: number, discordMessageId: string): Promise<void> {
+    try {
+      await axios.delete(`${API_BASE}/api/forum/threads/messages/${discordMessageId}`, {
+        data: { threadId }
+      });
+    } catch (err) {
+      handleApiError(err, 'deleteThreadMessage');
     }
   },
 };

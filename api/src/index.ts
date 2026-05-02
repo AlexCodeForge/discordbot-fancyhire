@@ -13,6 +13,7 @@ import channelsRouter from './features/channels/routes/channels';
 import channelMessagesRouter from './features/channels/routes/channelMessages';
 import ticketsRouter from './features/tickets/routes/tickets';
 import announcementsRouter from './features/announcements/routes/announcements';
+import forumRouter from './features/forums/routes/forum';
 import { errorHandler } from './shared/middleware/errorHandler';
 import { authMiddleware } from './features/auth/middleware/auth';
 
@@ -173,6 +174,7 @@ app.delete('/api/bot/channels/:channelId', async (req, res, next) => {
 
 app.use('/api/channels', authMiddleware, channelMessagesRouter);
 app.use('/api/channels', authMiddleware, channelsRouter);
+app.use('/api/forum', forumRouter);
 app.use('/api/logs', authMiddleware, logsRouter);
 app.use('/api/system', authMiddleware, systemRouter);
 app.use('/api/discord', authMiddleware, discordRouter);

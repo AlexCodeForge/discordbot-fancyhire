@@ -9,9 +9,14 @@ import { ManageCategoriesModal } from '../components/channels/modals/ManageCateg
 import { MoveChannelsModal } from '../components/channels/modals/MoveChannelsModal';
 import { SuccessModal } from '../components/ui/modals/SuccessModal';
 import { ConfirmationModal } from '../components/ui/modals/ConfirmationModal';
+import { ThreadList } from '../components/forums/ThreadList';
+import { ThreadChat } from '../components/forums/ThreadChat';
+import { CreateThreadModal } from '../components/forums/CreateThreadModal';
+import { EditThreadModal } from '../components/forums/EditThreadModal';
 import { api } from '../services/api';
 import { Channel } from '../types/Channel';
 import { ChannelMessage, CreateChannelData } from '../types/ChannelMessage';
+import { ForumThread, ThreadMessage } from '../types/ForumThread';
 import { isCategoryChannel } from '../components/channels/ChannelSidebar';
 
 function logError(message: string) {
@@ -22,7 +27,12 @@ export function ChannelsPage() {
   const [channels, setChannels] = useState<Channel[]>([]);
   const [selectedChannel, setSelectedChannel] = useState<Channel | null>(null);
   const [messages, setMessages] = useState<ChannelMessage[]>([]);
+  const [threads, setThreads] = useState<ForumThread[]>([]);
+  const [selectedThread, setSelectedThread] = useState<ForumThread | null>(null);
+  const [threadMessages, setThreadMessages] = useState<ThreadMessage[]>([]);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isCreateThreadModalOpen, setIsCreateThreadModalOpen] = useState(false);
+  const [threadToEdit, setThreadToEdit] = useState<ForumThread | null>(null);
   const [isManageCategoriesOpen, setIsManageCategoriesOpen] = useState(false);
   const [isMoveChannelsOpen, setIsMoveChannelsOpen] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -32,6 +42,7 @@ export function ChannelsPage() {
     message: string;
   } | null>(null);
   const [messageToDelete, setMessageToDelete] = useState<string | null>(null);
+  const [threadToDelete, setThreadToDelete] = useState<ForumThread | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
   const loadChannels = useCallback(async () => {
@@ -57,6 +68,34 @@ export function ChannelsPage() {
       setBannerError(msg);
     }
   }, []);
+
+  const loadThreads = useCallback(async (channelId: number) => {
+    try {
+      const data = await api.getForumThreads(channelId);
+      setThreads(data);
+      setBannerError(null);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Error al cargar threads';
+      logError(msg);
+      setBannerError(msg);
+    }
+  }, []);
+
+  const loadThreadMessages = useCallback(async (threadId: number) => {
+    try {
+      const data = await api.getThreadMessages(threadId);
+      setThreadMessages(data);
+      setBannerError(null);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Error al cargar mensajes de thread';
+      logError(msg);
+      setBannerError(msg);
+    }
+  }, []);
+
+  const isForumChannel = (channel: Channel) => {
+    return Number(channel.type) === 15;
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -89,21 +128,36 @@ export function ChannelsPage() {
   useEffect(() => {
     if (!selectedChannel) {
       setMessages([]);
+      setThreads([]);
+      setSelectedThread(null);
+      setThreadMessages([]);
       return;
     }
 
     const id = selectedChannel.id;
     setMessages([]);
+    setThreads([]);
+    setSelectedThread(null);
+    setThreadMessages([]);
+
+    const isForum = isForumChannel(selectedChannel);
 
     let cancelled = false;
     const tick = async () => {
       try {
-        const data = await api.getChannelMessages(id);
-        if (!cancelled) {
-          setMessages(data);
+        if (isForum) {
+          const data = await api.getForumThreads(id);
+          if (!cancelled) {
+            setThreads(data);
+          }
+        } else {
+          const data = await api.getChannelMessages(id);
+          if (!cancelled) {
+            setMessages(data);
+          }
         }
       } catch (e) {
-        const msg = e instanceof Error ? e.message : 'Error al cargar mensajes';
+        const msg = e instanceof Error ? e.message : 'Error al cargar datos';
         logError(msg);
         if (!cancelled) setBannerError(msg);
       }
@@ -116,6 +170,37 @@ export function ChannelsPage() {
       clearInterval(interval);
     };
   }, [selectedChannel?.id]);
+
+  useEffect(() => {
+    if (!selectedThread) {
+      setThreadMessages([]);
+      return;
+    }
+
+    const id = selectedThread.id;
+    setThreadMessages([]);
+
+    let cancelled = false;
+    const tick = async () => {
+      try {
+        const data = await api.getThreadMessages(id);
+        if (!cancelled) {
+          setThreadMessages(data);
+        }
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : 'Error al cargar mensajes de thread';
+        logError(msg);
+        if (!cancelled) setBannerError(msg);
+      }
+    };
+
+    void tick();
+    const interval = setInterval(tick, 3000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [selectedThread?.id]);
 
   const handleSelectChannel = (channel: Channel) => {
     setSelectedChannel(channel);
@@ -182,6 +267,38 @@ export function ChannelsPage() {
     }
   };
 
+  const handleSendThreadMessage = async (content: string, mentions: string[]) => {
+    if (!selectedThread) return;
+    try {
+      const msg = await api.sendThreadMessage(selectedThread.id, content, mentions);
+      setThreadMessages((prev) => [...prev, msg]);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'No se pudo enviar el mensaje al thread';
+      logError(msg);
+      setBannerError(msg);
+      void loadThreadMessages(selectedThread.id);
+    }
+  };
+
+  const handleCreateThread = async (name: string, content: string, embedData?: any) => {
+    if (!selectedChannel) return;
+    try {
+      await api.createForumThread(selectedChannel.id, name, content, {
+        embedData,
+      });
+      await loadThreads(selectedChannel.id);
+      setSuccessMessage({
+        title: 'Thread Creado',
+        message: `El thread "${name}" ha sido creado exitosamente.`,
+      });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'No se pudo crear el thread';
+      logError(msg);
+      setBannerError(msg);
+      throw e;
+    }
+  };
+
   const handleDeleteMessage = (discordMessageId: string) => {
     setMessageToDelete(discordMessageId);
   };
@@ -205,6 +322,62 @@ export function ChannelsPage() {
       void loadMessages(selectedChannel.id);
     } finally {
       setIsDeleting(false);
+    }
+  };
+
+  const handleDeleteThread = (thread: ForumThread) => {
+    setThreadToDelete(thread);
+  };
+
+  const confirmDeleteThread = async () => {
+    if (!selectedChannel || !threadToDelete) return;
+    
+    setIsDeleting(true);
+    try {
+      await api.deleteThread(threadToDelete.id);
+      setThreads((prev) => prev.filter((t) => t.id !== threadToDelete.id));
+      if (selectedThread?.id === threadToDelete.id) {
+        setSelectedThread(null);
+        setThreadMessages([]);
+      }
+      setThreadToDelete(null);
+      setSuccessMessage({
+        title: 'Thread Eliminado',
+        message: `El thread "${threadToDelete.name}" ha sido eliminado exitosamente.`,
+      });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'No se pudo eliminar el thread';
+      logError(msg);
+      setBannerError(msg);
+      void loadThreads(selectedChannel.id);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleEditThread = (thread: ForumThread) => {
+    setThreadToEdit(thread);
+  };
+
+  const handleSaveThreadEdit = async (threadId: number, name: string, content: string) => {
+    if (!selectedChannel) return;
+    try {
+      await api.updateThread(threadId, name, content);
+      await loadThreads(selectedChannel.id);
+      if (selectedThread?.id === threadId) {
+        const updatedThread = threads.find(t => t.id === threadId);
+        if (updatedThread) {
+          setSelectedThread({ ...updatedThread, name });
+        }
+      }
+      setSuccessMessage({
+        title: 'Thread Actualizado',
+        message: `El thread ha sido actualizado exitosamente.`,
+      });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'No se pudo actualizar el thread';
+      logError(msg);
+      throw e;
     }
   };
 
@@ -301,13 +474,35 @@ export function ChannelsPage() {
                   channel={selectedChannel}
                   onDeleteChannel={() => void handleDeleteChannel(selectedChannel)}
                 />
-                <ChannelChat
-                  channel={selectedChannel}
-                  messages={messages}
-                  onSendMessage={handleSendMessage}
-                  onDeleteMessage={handleDeleteMessage}
-                  isAdmin
-                />
+                {isForumChannel(selectedChannel) ? (
+                  <div className="flex min-h-0 flex-1">
+                    <ThreadList
+                      threads={threads}
+                      selectedThread={selectedThread}
+                      onSelectThread={setSelectedThread}
+                      onCreateThread={() => setIsCreateThreadModalOpen(true)}
+                      onDeleteThread={handleDeleteThread}
+                      onEditThread={handleEditThread}
+                    />
+                    {selectedThread ? (
+                      <ThreadChat
+                        thread={selectedThread}
+                        messages={threadMessages}
+                        onSendMessage={handleSendThreadMessage}
+                      />
+                    ) : (
+                      <EmptyState message="Selecciona un thread" />
+                    )}
+                  </div>
+                ) : (
+                  <ChannelChat
+                    channel={selectedChannel}
+                    messages={messages}
+                    onSendMessage={handleSendMessage}
+                    onDeleteMessage={handleDeleteMessage}
+                    isAdmin
+                  />
+                )}
               </>
             ) : (
               <EmptyState message="Selecciona un canal" />
@@ -350,12 +545,38 @@ export function ChannelsPage() {
         loading={isDeleting}
       />
 
+      <ConfirmationModal
+        isOpen={!!threadToDelete}
+        onClose={() => setThreadToDelete(null)}
+        onConfirm={confirmDeleteThread}
+        title="Eliminar Thread"
+        message={`¿Estás seguro de que deseas eliminar el thread "${threadToDelete?.name}"? Se eliminarán todos los mensajes del thread. Esta acción no se puede deshacer.`}
+        confirmText="Eliminar Thread"
+        variant="danger"
+        loading={isDeleting}
+      />
+
       <SuccessModal
         isOpen={!!successMessage}
         onClose={() => setSuccessMessage(null)}
         title={successMessage?.title || ''}
         message={successMessage?.message || ''}
       />
+
+      {isCreateThreadModalOpen && selectedChannel && (
+        <CreateThreadModal
+          onClose={() => setIsCreateThreadModalOpen(false)}
+          onCreate={handleCreateThread}
+        />
+      )}
+
+      {threadToEdit && (
+        <EditThreadModal
+          thread={threadToEdit}
+          onClose={() => setThreadToEdit(null)}
+          onSave={handleSaveThreadEdit}
+        />
+      )}
     </Layout>
   );
 }
