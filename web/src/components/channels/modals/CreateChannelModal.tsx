@@ -5,7 +5,6 @@ import { SuccessModal } from '../../ui/modals/SuccessModal';
 
 const CHANNEL_TYPE_OPTIONS: { label: string; value: string }[] = [
   { label: 'Texto', value: 'GUILD_TEXT' },
-  { label: 'Anuncios', value: 'GUILD_ANNOUNCEMENT' },
   { label: 'Foro', value: 'GUILD_FORUM' },
 ];
 

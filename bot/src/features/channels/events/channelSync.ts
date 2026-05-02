@@ -43,7 +43,7 @@ export async function syncAllChannels(client: Client): Promise<void> {
         if (!isSyncableChannelType(channel.type)) continue;
 
         const payload = buildChannelSyncPayload(channel as GuildChannel);
-        await axios.post(`${config.apiUrl}/api/channels/sync`, payload);
+        await axios.post(`${config.apiUrl}/api/bot/channels/sync`, payload);
         channelIds.push(channel.id);
       }
     }
@@ -51,11 +51,19 @@ export async function syncAllChannels(client: Client): Promise<void> {
     
     console.log(`[DEBUG] channelIds.length: ${channelIds.length}`);
     
-    // Sincronizar mensajes de cada canal
-    console.log(`Sincronizando mensajes de ${channelIds.length} canales...`);
+    // Sincronizar mensajes solo de canales que soporten mensajes (no foros ni categorías)
+    console.log(`Sincronizando mensajes de canales de texto...`);
     for (const channelId of channelIds) {
-      console.log(`[DEBUG] Sincronizando canal ${channelId}...`);
-      await syncChannelMessages(client, channelId);
+      try {
+        const ch = await client.channels.fetch(channelId);
+        // Solo sincronizar si es un canal de texto que soporta mensajes
+        if (ch && ch.isTextBased() && 'messages' in ch) {
+          console.log(`[DEBUG] Sincronizando canal ${channelId}...`);
+          await syncChannelMessages(client, channelId);
+        }
+      } catch (err) {
+        console.error(`Error sincronizando canal ${channelId}:`, err);
+      }
     }
     console.log('Mensajes de canales sincronizados');
   } catch (error) {

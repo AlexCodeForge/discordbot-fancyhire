@@ -475,7 +475,7 @@ client.on(Events.ChannelCreate, async (channel) => {
   if (!channel.isDMBased() && 'guild' in channel && channel.guild && isSyncableChannelType(channel.type)) {
     try {
       await axios.post(
-        `${config.apiUrl}/api/channels/sync`,
+        `${config.apiUrl}/api/bot/channels/sync`,
         buildChannelSyncPayload(channel as GuildChannel)
       );
     } catch (error) {
@@ -504,7 +504,7 @@ client.on(Events.ChannelUpdate, async (oldChannel, newChannel) => {
   if (oldName !== newChannel.name || oldParent !== newParent) {
     try {
       await axios.post(
-        `${config.apiUrl}/api/channels/sync`,
+        `${config.apiUrl}/api/bot/channels/sync`,
         buildChannelSyncPayload(newChannel as GuildChannel)
       );
       console.log(`Canal ${newChannel.id} actualizado en API`);
@@ -551,8 +551,6 @@ function parseChannelTypeInput(type: unknown): ChannelType {
   if (typeof type === 'string') {
     const t = type.toUpperCase();
     if (t === 'GUILD_TEXT' || t === '0') return ChannelType.GuildText;
-    if (t === 'GUILD_ANNOUNCEMENT' || t === 'GUILD_NEWS' || t === '5')
-      return ChannelType.GuildAnnouncement;
     if (t === 'GUILD_FORUM' || t === '15') return ChannelType.GuildForum;
     if (t === 'GUILD_CATEGORY' || t === '4') return ChannelType.GuildCategory;
   }
@@ -868,7 +866,6 @@ botHttpServer.post('/create-channel', async (req, res) => {
       name: name.trim(),
       type: channelType as
         | ChannelType.GuildText
-        | ChannelType.GuildAnnouncement
         | ChannelType.GuildForum
         | ChannelType.GuildCategory,
       topic: topic && typeof topic === 'string' ? topic : undefined,
@@ -939,7 +936,7 @@ botHttpServer.post('/move-channels', async (req, res) => {
           topic: 'topic' in discordChannel ? (discordChannel as any).topic : null,
         };
         
-        await axios.post(`${config.apiUrl}/api/channels/sync`, payload);
+        await axios.post(`${config.apiUrl}/api/bot/channels/sync`, payload);
       }
     }
 

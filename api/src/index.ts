@@ -124,6 +124,53 @@ app.post('/api/tickets/messages/incoming', async (req, res) => {
 
 app.use('/api/leads', authMiddleware, leadsRouter);
 app.use('/api/messages', authMiddleware, messagesRouter);
+
+// Webhook del bot para sincronizar canales - sin autenticación
+app.post('/api/bot/channels/sync', async (req, res, next) => {
+  try {
+    const {
+      discord_channel_id,
+      name,
+      type,
+      position,
+      parent_id,
+      topic,
+    } = req.body;
+
+    if (!discord_channel_id || !name || type === undefined || type === null) {
+      return res.status(400).json({
+        error: 'discord_channel_id, name y type son requeridos',
+      });
+    }
+
+    const { ChannelModel } = await import('./features/channels/models/Channel.js');
+    const channel = await ChannelModel.upsert({
+      discord_channel_id,
+      name,
+      type: String(type),
+      position,
+      parent_id,
+      topic,
+    });
+
+    res.json(channel);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Webhook del bot para eliminar canales - sin autenticación  
+app.delete('/api/bot/channels/:channelId', async (req, res, next) => {
+  try {
+    const { channelId } = req.params;
+    const { ChannelModel } = await import('./features/channels/models/Channel.js');
+    await ChannelModel.delete(channelId);
+    res.json({ success: true });
+  } catch (error) {
+    next(error);
+  }
+});
+
 app.use('/api/channels', authMiddleware, channelMessagesRouter);
 app.use('/api/channels', authMiddleware, channelsRouter);
 app.use('/api/logs', authMiddleware, logsRouter);

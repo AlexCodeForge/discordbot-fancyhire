@@ -76,11 +76,26 @@ interface ChannelItemProps {
   onSelect: () => void;
 }
 
+function getChannelIcon(channel: Channel): string {
+  const type = Number(channel.type);
+  if (type === 15) return '💬'; // GUILD_FORUM
+  return '#'; // GUILD_TEXT (default)
+}
+
+function getChannelTypeName(channel: Channel): string {
+  const type = Number(channel.type);
+  if (type === 15) return 'Foro';
+  return 'Texto';
+}
+
 function ChannelItem({
   channel,
   isSelected,
   onSelect,
 }: ChannelItemProps) {
+  const icon = getChannelIcon(channel);
+  const typeName = getChannelTypeName(channel);
+  
   return (
     <li>
       <button
@@ -88,7 +103,9 @@ function ChannelItem({
         onClick={onSelect}
         className="bmw-body-sm w-full text-left"
         style={{
-          display: 'block',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
           width: '100%',
           padding: '8px 16px',
           margin: 0,
@@ -109,8 +126,12 @@ function ChannelItem({
             e.currentTarget.style.backgroundColor = 'transparent';
           }
         }}
+        title={`${typeName}: ${channel.name}`}
       >
-        #{channel.name}
+        <span style={{ fontSize: '16px', lineHeight: 1 }}>{icon}</span>
+        <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {channel.name}
+        </span>
       </button>
     </li>
   );
@@ -311,21 +332,19 @@ export function ChannelSidebar({
       >
         {groups.map((group) => (
           <div key={group.categoryId ?? 'uncategorized'} style={{ marginBottom: '16px' }}>
-            {group.categoryName && (
-              <div
-                className="bmw-label"
-                style={{
-                  padding: '8px 16px 4px',
-                  color: 'var(--bmw-muted)',
-                  fontSize: '12px',
-                  fontWeight: 700,
-                  letterSpacing: '1px',
-                  textTransform: 'uppercase',
-                }}
-              >
-                {group.categoryName}
-              </div>
-            )}
+            <div
+              className="bmw-label"
+              style={{
+                padding: '8px 16px 4px',
+                color: 'var(--bmw-muted)',
+                fontSize: '12px',
+                fontWeight: 700,
+                letterSpacing: '1px',
+                textTransform: 'uppercase',
+              }}
+            >
+              {group.categoryName || 'SIN CATEGORÍA'}
+            </div>
             {group.channels.length === 0 ? (
               <p
                 className="bmw-body-xs"
