@@ -12,6 +12,7 @@ import messagesRouter from './routes/messages';
 import channelsRouter from './routes/channels';
 import channelMessagesRouter from './routes/channelMessages';
 import ticketsRouter from './routes/tickets';
+import announcementsRouter from './routes/announcements';
 import { errorHandler } from './middleware/errorHandler';
 import { authMiddleware } from './middleware/auth';
 
@@ -30,9 +31,6 @@ app.get('/health', (req, res) => {
 
 app.use('/api/auth', authRouter);
 app.use('/api/bot', botRouter);
-app.use('/api/messages', messagesRouter);
-app.use('/api/channels', channelMessagesRouter);
-app.use('/api/channels', channelsRouter);
 
 app.post('/api/discord/members/sync', async (req, res) => {
   try {
@@ -83,10 +81,14 @@ app.post('/api/tickets/messages/incoming', async (req, res) => {
 });
 
 app.use('/api/leads', authMiddleware, leadsRouter);
+app.use('/api/messages', authMiddleware, messagesRouter);
+app.use('/api/channels', authMiddleware, channelMessagesRouter);
+app.use('/api/channels', authMiddleware, channelsRouter);
 app.use('/api/logs', authMiddleware, logsRouter);
 app.use('/api/system', authMiddleware, systemRouter);
 app.use('/api/discord', authMiddleware, discordRouter);
 app.use('/api/tickets', authMiddleware, ticketsRouter);
+app.use('/api/announcements', authMiddleware, announcementsRouter);
 
 app.use(errorHandler);
 

@@ -2,7 +2,6 @@ import { Router } from 'express';
 import { ChannelModel } from '../models/Channel';
 import { ChannelService } from '../services/channelService';
 import { Logger } from '../utils/Logger';
-import { authMiddleware } from '../middleware/auth';
 
 const router = Router();
 
@@ -10,7 +9,7 @@ function isDiscordSnowflake(value: string): boolean {
   return /^\d{17,20}$/.test(value);
 }
 
-router.get('/', authMiddleware, async (req, res, next) => {
+router.get('/', async (req, res, next) => {
   try {
     const channels = await ChannelModel.getAll();
     Logger.info('Canales listados', { count: channels.length }, req);
@@ -53,7 +52,7 @@ router.post('/sync', async (req, res, next) => {
   }
 });
 
-router.delete('/:discordChannelId/delete', authMiddleware, async (req, res, next) => {
+router.delete('/:discordChannelId/delete', async (req, res, next) => {
   try {
     const { discordChannelId } = req.params;
 
@@ -88,7 +87,7 @@ router.delete('/:discordChannelId', async (req, res, next) => {
   }
 });
 
-router.post('/create', authMiddleware, async (req, res, next) => {
+router.post('/create', async (req, res, next) => {
   try {
     const { name, type, topic, parentId } = req.body;
 
@@ -110,7 +109,7 @@ router.post('/create', authMiddleware, async (req, res, next) => {
   }
 });
 
-router.patch('/move', authMiddleware, async (req, res, next) => {
+router.patch('/move', async (req, res, next) => {
   try {
     const { channelIds, targetCategoryId } = req.body;
 

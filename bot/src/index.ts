@@ -7,6 +7,7 @@ import {
   ChannelType,
   DMChannel,
   GuildChannel,
+  EmbedBuilder,
 } from 'discord.js';
 import axios from 'axios';
 import express from 'express';
@@ -720,6 +721,63 @@ botHttpServer.delete('/delete-channel-message', async (req, res) => {
     res.status(500).json({
       error: 'Error al eliminar mensaje',
       message: error instanceof Error ? error.message : 'Error desconocido',
+    });
+  }
+});
+
+botHttpServer.post('/send-embed', async (req, res) => {
+  const { channelId, embedData } = req.body;
+
+  if (!channelId || !embedData) {
+    return res.status(400).json({ error: 'channelId and embedData are required' });
+  }
+
+  try {
+    const channel = await client.channels.fetch(channelId);
+    
+    if (!channel) {
+      return res.status(404).json({ error: 'Channel not found' });
+    }
+
+    if (!channel.isTextBased() || channel.isDMBased()) {
+      return res.status(400).json({ error: 'Channel is not a valid text channel' });
+    }
+
+    const embed = new EmbedBuilder();
+
+    if (embedData.title) embed.setTitle(embedData.title);
+    if (embedData.description) embed.setDescription(embedData.description);
+    if (embedData.color) {
+      const colorValue = embedData.color.startsWith('#') 
+        ? parseInt(embedData.color.substring(1), 16) 
+        : parseInt(embedData.color, 16);
+      embed.setColor(colorValue);
+    }
+    if (embedData.url) embed.setURL(embedData.url);
+    if (embedData.thumbnail_url) embed.setThumbnail(embedData.thumbnail_url);
+    if (embedData.image_url) embed.setImage(embedData.image_url);
+    if (embedData.footer_text) {
+      embed.setFooter({ 
+        text: embedData.footer_text,
+        iconURL: embedData.footer_icon_url || undefined
+      });
+    }
+    if (embedData.author_name) {
+      embed.setAuthor({ 
+        name: embedData.author_name,
+        iconURL: embedData.author_icon_url || undefined
+      });
+    }
+
+    const message = await channel.send({ embeds: [embed] });
+    
+    console.log(`Embed sent to channel ${channelId}, message ID: ${message.id}`);
+    res.json({ success: true, messageId: message.id });
+  } catch (error) {
+    console.error('Error sending embed:', error);
+    res.status(500).json({
+      error: 'Error sending embed',
+      message: error instanceof Error ? error.message : 'Unknown error'
     });
   }
 });

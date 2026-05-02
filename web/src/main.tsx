@@ -8,6 +8,7 @@ import { Members } from './pages/Members';
 import { ChannelsPage } from './pages/ChannelsPage';
 import { TicketMetrics } from './pages/TicketMetrics';
 import { RolesPage } from './pages/RolesPage';
+import { Announcements } from './pages/Announcements';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import './index.css';
@@ -85,6 +86,14 @@ function AppRouter() {
         element={
           <ProtectedRoute>
             <RolesPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/announcements"
+        element={
+          <ProtectedRoute>
+            <Announcements />
           </ProtectedRoute>
         }
       />
