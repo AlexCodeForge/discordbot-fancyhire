@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
-import { pool } from '../models/database';
-import { Logger } from '../utils/Logger';
+import { pool } from '../shared/database/database';
+import { Logger } from '../shared/utils/Logger';
 
 const router = Router();
 

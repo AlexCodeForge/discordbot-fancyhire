@@ -1,8 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import { discordApi, DiscordMember, Guild, GuildRole } from '../services/discord';
-import { Layout } from '../components/Layout';
-import { MemberAvatar } from '../components/MemberAvatar';
-import { RoleBadge } from '../components/RoleBadge';
+import { Layout } from '../components/ui/Layout';
+import { MemberAvatar } from '../components/ui/MemberAvatar';
+import { RoleBadge } from '../components/roles/RoleBadge';
 
 export function Members() {
   const [members, setMembers] = useState<DiscordMember[]>([]);

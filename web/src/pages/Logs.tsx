@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { logsApi, SystemLog, LogStats } from '../services/logs';
-import { Layout } from '../components/Layout';
-import { ConfirmationModal } from '../components/ConfirmationModal';
+import { Layout } from '../components/ui/Layout';
+import { ConfirmationModal } from '../components/ui/modals/ConfirmationModal';
 
 const LEVELS = ['error', 'warning', 'info', 'debug'] as const;
 const LEVEL_COLORS = {

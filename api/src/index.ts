@@ -2,19 +2,19 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import path from 'path';
-import leadsRouter from './routes/leads';
-import authRouter from './routes/auth';
+import leadsRouter from './features/leads/routes/leads';
+import authRouter from './features/auth/routes/auth';
 import logsRouter from './routes/logs';
 import systemRouter from './routes/system';
-import discordRouter from './routes/discord';
-import botRouter from './routes/bot';
-import messagesRouter from './routes/messages';
-import channelsRouter from './routes/channels';
-import channelMessagesRouter from './routes/channelMessages';
-import ticketsRouter from './routes/tickets';
-import announcementsRouter from './routes/announcements';
-import { errorHandler } from './middleware/errorHandler';
-import { authMiddleware } from './middleware/auth';
+import discordRouter from './features/discord/routes/discord';
+import botRouter from './features/discord/routes/bot';
+import messagesRouter from './features/leads/routes/messages';
+import channelsRouter from './features/channels/routes/channels';
+import channelMessagesRouter from './features/channels/routes/channelMessages';
+import ticketsRouter from './features/tickets/routes/tickets';
+import announcementsRouter from './features/announcements/routes/announcements';
+import { errorHandler } from './shared/middleware/errorHandler';
+import { authMiddleware } from './features/auth/middleware/auth';
 
 dotenv.config();
 
@@ -34,7 +34,7 @@ app.use('/api/bot', botRouter);
 
 app.post('/api/discord/members/sync', async (req, res) => {
   try {
-    const { DiscordMemberModel } = await import('./models/DiscordMemberModel');
+    const { DiscordMemberModel } = await import('./features/discord/models/DiscordMemberModel');
     await DiscordMemberModel.upsert(req.body);
     res.json({ success: true });
   } catch (error) {
@@ -45,7 +45,7 @@ app.post('/api/discord/members/sync', async (req, res) => {
 
 app.get('/api/announcements/by-message/:messageId', async (req, res) => {
   try {
-    const { AnnouncementModel } = await import('./models/Announcement');
+    const { AnnouncementModel } = await import('./features/announcements/models/Announcement');
     const { messageId } = req.params;
     
     const result = await AnnouncementModel.getByMessageId(messageId);
@@ -63,7 +63,7 @@ app.get('/api/announcements/by-message/:messageId', async (req, res) => {
 
 app.post('/api/announcements/reactions/bot', async (req, res) => {
   try {
-    const { AnnouncementReactionModel } = await import('./models/AnnouncementReaction');
+    const { AnnouncementReactionModel } = await import('./features/announcements/models/AnnouncementReaction');
     const { announcementId, emoji, userId, userName, action } = req.body;
 
     if (!announcementId || !emoji || !userId || !action) {
@@ -87,8 +87,8 @@ app.post('/api/announcements/reactions/bot', async (req, res) => {
 
 app.post('/api/tickets/messages/incoming', async (req, res) => {
   try {
-    const { TicketMessageModel } = await import('./models/TicketMessage');
-    const { TicketModel } = await import('./models/Ticket');
+    const { TicketMessageModel } = await import('./features/tickets/models/TicketMessage');
+    const { TicketModel } = await import('./features/tickets/models/Ticket');
     
     const { discord_channel_id, discord_message_id, author_id, author_name, content, sent_at } = req.body;
 

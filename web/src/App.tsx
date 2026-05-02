@@ -11,11 +11,11 @@ import {
 } from '@dnd-kit/core';
 import { Lead, LeadStage, STAGES } from './types/Lead';
 import { api } from './services/api';
-import { KanbanColumn } from './components/KanbanColumn';
-import { LeadCard } from './components/LeadCard';
-import { LeadModal } from './components/LeadModal';
-import { CreateLeadForm } from './components/CreateLeadForm';
-import { Layout } from './components/Layout';
+import { KanbanColumn } from './components/leads/KanbanColumn';
+import { LeadCard } from './components/leads/LeadCard';
+import { LeadModal } from './components/leads/LeadModal';
+import { CreateLeadForm } from './components/leads/CreateLeadForm';
+import { Layout } from './components/ui/Layout';
 
 function App() {
   const [leads, setLeads] = useState<Lead[]>([]);

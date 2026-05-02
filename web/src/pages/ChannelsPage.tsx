@@ -1,16 +1,16 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Layout } from '../components/Layout';
-import { ChannelSidebarImproved } from '../components/ChannelSidebarImproved';
-import { ChannelHeader } from '../components/ChannelHeader';
-import { ChannelChat } from '../components/ChannelChat';
-import { EmptyState } from '../components/EmptyState';
-import { CreateChannelModal } from '../components/CreateChannelModal';
-import { ManageCategoriesModal } from '../components/ManageCategoriesModal';
-import { MoveChannelsModal } from '../components/MoveChannelsModal';
+import { Layout } from '../components/ui/Layout';
+import { ChannelSidebar } from '../components/channels/ChannelSidebar';
+import { ChannelHeader } from '../components/channels/ChannelHeader';
+import { ChannelChat } from '../components/channels/ChannelChat';
+import { EmptyState } from '../components/ui/EmptyState';
+import { CreateChannelModal } from '../components/channels/modals/CreateChannelModal';
+import { ManageCategoriesModal } from '../components/channels/modals/ManageCategoriesModal';
+import { MoveChannelsModal } from '../components/channels/modals/MoveChannelsModal';
 import { api } from '../services/api';
 import { Channel } from '../types/Channel';
 import { ChannelMessage, CreateChannelData } from '../types/ChannelMessage';
-import { isCategoryChannel } from '../components/ChannelSidebarImproved';
+import { isCategoryChannel } from '../components/channels/ChannelSidebar';
 
 function logError(message: string) {
   console.error(message);
@@ -263,7 +263,7 @@ export function ChannelsPage() {
         )}
 
         <div className="flex min-h-0 flex-1" style={{ backgroundColor: 'var(--bmw-surface-2)' }}>
-          <ChannelSidebarImproved
+          <ChannelSidebar
             channels={channels}
             selectedChannel={selectedChannel}
             onSelectChannel={handleSelectChannel}

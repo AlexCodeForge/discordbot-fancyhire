@@ -1,19 +1,19 @@
 import { useState } from 'react';
 import axios from 'axios';
-import { Layout } from '../components/Layout';
-import { AnnouncementEditor } from '../components/AnnouncementEditor';
-import { EmbedPreview } from '../components/EmbedPreview';
-import { ChannelSelector } from '../components/ChannelSelector';
-import { TemplateSelector } from '../components/TemplateSelector';
-import { TemplateManager } from '../components/TemplateManager';
-import { TemplateList } from '../components/TemplateList';
-import { AnnouncementHistory } from '../components/AnnouncementHistory';
-import { AnnouncementStatsModal } from '../components/AnnouncementStatsModal';
-import { CategoryList } from '../components/CategoryList';
-import { CategorySelector } from '../components/CategorySelector';
+import { Layout } from '../components/ui/Layout';
+import { AnnouncementEditor } from '../components/announcements/AnnouncementEditor';
+import { EmbedPreview } from '../components/announcements/EmbedPreview';
+import { ChannelSelector } from '../components/channels/ChannelSelector';
+import { TemplateSelector } from '../components/templates/TemplateSelector';
+import { TemplateManager } from '../components/templates/TemplateManager';
+import { TemplateList } from '../components/templates/TemplateList';
+import { AnnouncementHistory } from '../components/announcements/AnnouncementHistory';
+import { AnnouncementStatsModal } from '../components/announcements/modals/AnnouncementStatsModal';
+import { CategoryList } from '../components/channels/CategoryList';
+import { CategorySelector } from '../components/channels/CategorySelector';
 import { AnnouncementEmbed, AnnouncementTemplate } from '../types/Announcement';
-import { SuccessModal } from '../components/SuccessModal';
-import { ErrorModal } from '../components/ErrorModal';
+import { SuccessModal } from '../components/ui/modals/SuccessModal';
+import { ErrorModal } from '../components/ui/modals/ErrorModal';
 
 type Tab = 'editor' | 'history' | 'templates' | 'categories';
 
@@ -311,6 +311,7 @@ export function Announcements() {
       {successMessage && (
         <SuccessModal
           isOpen={!!successMessage}
+          title="Operación correcta"
           message={successMessage}
           onClose={() => setSuccessMessage(null)}
         />
@@ -319,6 +320,7 @@ export function Announcements() {
       {error && (
         <ErrorModal
           isOpen={!!error}
+          title="Error"
           message={error}
           onClose={() => setError(null)}
         />

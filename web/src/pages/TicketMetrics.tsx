@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Layout } from '../components/Layout';
+import { Layout } from '../components/ui/Layout';
 import { api } from '../services/api';
-import { TicketChatModal } from '../components/TicketChatModal';
+import { TicketChatModal } from '../components/tickets/modals/TicketChatModal';
 
 interface Ticket {
   id: number;

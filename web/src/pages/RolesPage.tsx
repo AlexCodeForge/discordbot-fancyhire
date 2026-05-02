@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Layout } from '../components/Layout';
-import { RoleModal } from '../components/RoleModal';
-import { RoleMembersModal } from '../components/RoleMembersModal';
-import { ConfirmationModal } from '../components/ConfirmationModal';
+import { Layout } from '../components/ui/Layout';
+import { RoleModal } from '../components/roles/modals/RoleModal';
+import { RoleMembersModal } from '../components/roles/modals/RoleMembersModal';
+import { ConfirmationModal } from '../components/ui/modals/ConfirmationModal';
 import { discordApi, GuildRoleDetailed, Guild } from '../services/discord';
 
 export function RolesPage() {
@@ -60,7 +60,7 @@ export function RolesPage() {
       );
       setRoles(rolesWithDetails as GuildRoleDetailed[]);
       
-      const botRole = rolesWithDetails.find(r => r.name === 'CRM Leads Bot' || r.managed);
+      const botRole = (rolesWithDetails as GuildRoleDetailed[]).find(r => r.name === 'CRM Leads Bot' || r.managed);
       if (botRole) {
         setBotRolePosition(botRole.position);
       }

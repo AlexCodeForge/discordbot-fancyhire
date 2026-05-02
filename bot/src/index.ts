@@ -1,8 +1,10 @@
 import {
   Client,
+  Collection,
   GatewayIntentBits,
   Events,
   GuildMember,
+  Message,
   Partials,
   ChannelType,
   DMChannel,
@@ -14,10 +16,10 @@ import express from 'express';
 import fs from 'fs';
 import path from 'path';
 import { config } from './config';
-import { syncAllChannels, buildChannelSyncPayload, isSyncableChannelType } from './events/channelSync';
-import { buildChannelIncomingPayload } from './events/channelMessageSync';
-import { TicketChannelService } from './services/ticketChannelService';
-import { setupAnnouncementReactionListeners } from './events/announcementReactions';
+import { syncAllChannels, buildChannelSyncPayload, isSyncableChannelType } from './features/channels/events/channelSync';
+import { buildChannelIncomingPayload } from './features/channels/events/channelMessageSync';
+import { TicketChannelService } from './features/tickets/services/ticketChannelService';
+import { setupAnnouncementReactionListeners } from './features/announcements/events/announcementReactions';
 
 const BOT_STATUS_FILE = path.join(__dirname, '../../api/.bot-status.json');
 
@@ -153,24 +155,22 @@ const syncTicketChannel = async (channelId: string): Promise<number> => {
       return 0;
     }
 
-    const channelName = channel.name;
+    const channelName = channel.name ?? '';
     if (!channelName.startsWith('ticket-')) {
       return 0;
     }
 
     console.log(`[TICKET-SYNC] Sincronizando canal ${channelName}...`);
 
-    let allMessages: any[] = [];
+    let allMessages: Message[] = [];
     let lastMessageId: string | undefined;
     let hasMore = true;
 
     while (hasMore) {
-      const fetchOptions: any = { limit: 100 };
-      if (lastMessageId) {
-        fetchOptions.before = lastMessageId;
-      }
-
-      const messages = await channel.messages.fetch(fetchOptions);
+      const messages: Collection<string, Message> = await channel.messages.fetch({
+        limit: 100,
+        ...(lastMessageId ? { before: lastMessageId } : {}),
+      });
       
       if (messages.size === 0) {
         hasMore = false;
@@ -499,8 +499,9 @@ client.on(Events.ChannelUpdate, async (oldChannel, newChannel) => {
   // Si cambió el parent_id (se movió de categoría) o cambió el nombre, sincronizar
   const oldParent = 'parentId' in oldChannel ? (oldChannel as any).parentId : null;
   const newParent = 'parentId' in newChannel ? (newChannel as any).parentId : null;
-  
-  if (oldChannel.name !== newChannel.name || oldParent !== newParent) {
+  const oldName = 'name' in oldChannel ? oldChannel.name : undefined;
+
+  if (oldName !== newChannel.name || oldParent !== newParent) {
     try {
       await axios.post(
         `${config.apiUrl}/api/channels/sync`,

@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { pool } from '../models/database';
+import { pool } from '../shared/database/database';
 import fs from 'fs';
 import path from 'path';
 
