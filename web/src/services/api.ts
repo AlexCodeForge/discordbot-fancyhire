@@ -265,4 +265,115 @@ export const api = {
       handleApiError(err, 'getTicketMetrics');
     }
   },
+
+  async getAnnouncementTemplates(): Promise<any[]> {
+    try {
+      const response = await axios.get(`${API_BASE}/api/announcements/templates`);
+      return response.data;
+    } catch (err) {
+      handleApiError(err, 'getAnnouncementTemplates');
+    }
+  },
+
+  async createAnnouncementTemplate(data: { name: string; embedData: any }): Promise<any> {
+    try {
+      const response = await axios.post(`${API_BASE}/api/announcements/templates`, data);
+      return response.data;
+    } catch (err) {
+      handleApiError(err, 'createAnnouncementTemplate');
+    }
+  },
+
+  async updateAnnouncementTemplate(id: number, embedData: any): Promise<any> {
+    try {
+      const response = await axios.put(`${API_BASE}/api/announcements/templates/${id}`, embedData);
+      return response.data;
+    } catch (err) {
+      handleApiError(err, 'updateAnnouncementTemplate');
+    }
+  },
+
+  async deleteAnnouncementTemplate(id: number): Promise<void> {
+    try {
+      await axios.delete(`${API_BASE}/api/announcements/templates/${id}`);
+    } catch (err) {
+      handleApiError(err, 'deleteAnnouncementTemplate');
+    }
+  },
+
+  async getAnnouncements(): Promise<any[]> {
+    try {
+      const response = await axios.get(`${API_BASE}/api/announcements`);
+      return response.data;
+    } catch (err) {
+      handleApiError(err, 'getAnnouncements');
+    }
+  },
+
+  async getAnnouncementWithStats(id: number): Promise<any> {
+    try {
+      const response = await axios.get(`${API_BASE}/api/announcements/${id}/stats`);
+      return response.data;
+    } catch (err) {
+      handleApiError(err, 'getAnnouncementWithStats');
+    }
+  },
+
+  async deleteAnnouncement(id: number): Promise<void> {
+    try {
+      await axios.delete(`${API_BASE}/api/announcements/${id}`);
+    } catch (err) {
+      handleApiError(err, 'deleteAnnouncement');
+    }
+  },
+
+  async editAnnouncementEmbed(id: number, embedData: any): Promise<void> {
+    try {
+      const announcement = await axios.get(`${API_BASE}/api/announcements/${id}`);
+      const { discord_channel_id, discord_message_id } = announcement.data;
+      
+      if (!discord_channel_id || !discord_message_id) {
+        throw new Error('Anuncio no enviado o ya eliminado');
+      }
+
+      await axios.patch(`${API_BASE}/api/announcements/${id}`, embedData);
+    } catch (err) {
+      handleApiError(err, 'editAnnouncementEmbed');
+    }
+  },
+
+  async getAnnouncementCategories(): Promise<any[]> {
+    try {
+      const response = await axios.get(`${API_BASE}/api/announcements/categories`);
+      return response.data;
+    } catch (err) {
+      handleApiError(err, 'getAnnouncementCategories');
+    }
+  },
+
+  async createAnnouncementCategory(data: { name: string; color?: string; description?: string }): Promise<any> {
+    try {
+      const response = await axios.post(`${API_BASE}/api/announcements/categories`, data);
+      return response.data;
+    } catch (err) {
+      handleApiError(err, 'createAnnouncementCategory');
+    }
+  },
+
+  async updateAnnouncementCategory(id: number, data: { name: string; color?: string; description?: string }): Promise<any> {
+    try {
+      const response = await axios.put(`${API_BASE}/api/announcements/categories/${id}`, data);
+      return response.data;
+    } catch (err) {
+      handleApiError(err, 'updateAnnouncementCategory');
+    }
+  },
+
+  async deleteAnnouncementCategory(id: number): Promise<void> {
+    try {
+      await axios.delete(`${API_BASE}/api/announcements/categories/${id}`);
+    } catch (err) {
+      handleApiError(err, 'deleteAnnouncementCategory');
+    }
+  },
 };

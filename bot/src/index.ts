@@ -17,6 +17,7 @@ import { config } from './config';
 import { syncAllChannels, buildChannelSyncPayload, isSyncableChannelType } from './events/channelSync';
 import { buildChannelIncomingPayload } from './events/channelMessageSync';
 import { TicketChannelService } from './services/ticketChannelService';
+import { setupAnnouncementReactionListeners } from './events/announcementReactions';
 
 const BOT_STATUS_FILE = path.join(__dirname, '../../api/.bot-status.json');
 
@@ -27,8 +28,9 @@ const client = new Client({
     GatewayIntentBits.DirectMessages,
     GatewayIntentBits.MessageContent,
     GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.GuildMessageReactions,
   ],
-  partials: [Partials.Channel, Partials.Message],
+  partials: [Partials.Channel, Partials.Message, Partials.Reaction],
 });
 
 const updateBotStatus = (connected: boolean, username?: string) => {
@@ -295,6 +297,8 @@ client.once(Events.ClientReady, async (c) => {
   }
 
   console.log('Ticket service initialized');
+
+  setupAnnouncementReactionListeners(client);
 
   setInterval(() => {
     updateBotStatus(true, c.user.tag);
@@ -777,6 +781,69 @@ botHttpServer.post('/send-embed', async (req, res) => {
     console.error('Error sending embed:', error);
     res.status(500).json({
       error: 'Error sending embed',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+botHttpServer.patch('/edit-embed', async (req, res) => {
+  const { channelId, messageId, embedData } = req.body;
+
+  if (!channelId || !messageId || !embedData) {
+    return res.status(400).json({ error: 'channelId, messageId, and embedData are required' });
+  }
+
+  try {
+    const channel = await client.channels.fetch(channelId);
+    
+    if (!channel) {
+      return res.status(404).json({ error: 'Channel not found' });
+    }
+
+    if (!channel.isTextBased() || channel.isDMBased()) {
+      return res.status(400).json({ error: 'Channel is not a valid text channel' });
+    }
+
+    const message = await (channel as any).messages.fetch(messageId);
+    
+    if (!message) {
+      return res.status(404).json({ error: 'Message not found' });
+    }
+
+    const embed = new EmbedBuilder();
+
+    if (embedData.title) embed.setTitle(embedData.title);
+    if (embedData.description) embed.setDescription(embedData.description);
+    if (embedData.color) {
+      const colorValue = embedData.color.startsWith('#') 
+        ? parseInt(embedData.color.substring(1), 16) 
+        : parseInt(embedData.color, 16);
+      embed.setColor(colorValue);
+    }
+    if (embedData.url) embed.setURL(embedData.url);
+    if (embedData.thumbnail_url) embed.setThumbnail(embedData.thumbnail_url);
+    if (embedData.image_url) embed.setImage(embedData.image_url);
+    if (embedData.footer_text) {
+      embed.setFooter({ 
+        text: embedData.footer_text,
+        iconURL: embedData.footer_icon_url || undefined
+      });
+    }
+    if (embedData.author_name) {
+      embed.setAuthor({ 
+        name: embedData.author_name,
+        iconURL: embedData.author_icon_url || undefined
+      });
+    }
+
+    await message.edit({ embeds: [embed] });
+    
+    console.log(`Embed edited in channel ${channelId}, message ID: ${messageId}`);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error editing embed:', error);
+    res.status(500).json({
+      error: 'Error editing embed',
       message: error instanceof Error ? error.message : 'Unknown error'
     });
   }

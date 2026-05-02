@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { LeadModel } from '../models/Lead';
+import { AnnouncementService } from '../services/announcementService';
 import { Logger } from '../utils/Logger';
 import { pool } from '../models/database';
 
@@ -29,6 +30,29 @@ router.post('/webhook/lead', async (req, res, next) => {
     res.status(201).json(lead);
   } catch (error) {
     Logger.error('Error creando lead desde bot', { error: error instanceof Error ? error.message : 'Unknown' });
+    next(error);
+  }
+});
+
+router.patch('/edit-announcement', async (req, res, next) => {
+  try {
+    const { channelId, messageId, embedData } = req.body;
+
+    if (!channelId || !messageId || !embedData) {
+      return res.status(400).json({ error: 'channelId, messageId, and embedData are required' });
+    }
+
+    const result = await AnnouncementService.editEmbed(channelId, messageId, embedData);
+    
+    if (result.success) {
+      Logger.info('Announcement edited in Discord', { channelId, messageId });
+      res.json(result);
+    } else {
+      Logger.warning('Failed to edit announcement in Discord', { channelId, messageId, error: result.error });
+      res.status(500).json(result);
+    }
+  } catch (error) {
+    Logger.error('Error editing announcement', { error: error instanceof Error ? error.message : 'Unknown' });
     next(error);
   }
 });

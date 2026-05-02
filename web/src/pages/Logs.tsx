@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { logsApi, SystemLog, LogStats } from '../services/logs';
 import { Layout } from '../components/Layout';
+import { ConfirmationModal } from '../components/ConfirmationModal';
 
 const LEVELS = ['error', 'warning', 'info', 'debug'] as const;
 const LEVEL_COLORS = {
@@ -18,6 +19,8 @@ export function Logs() {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [selectedLog, setSelectedLog] = useState<SystemLog | null>(null);
+  const [showCleanupConfirm, setShowCleanupConfirm] = useState(false);
+  const [cleaning, setCleaning] = useState(false);
   const limit = 50;
 
   useEffect(() => {
@@ -51,18 +54,23 @@ export function Logs() {
     }
   };
 
-  const handleCleanup = async () => {
-    if (!confirm('¿Estás seguro de que quieres eliminar los logs antiguos?')) {
-      return;
-    }
+  const handleCleanupClick = () => {
+    setShowCleanupConfirm(true);
+  };
+
+  const handleCleanupConfirm = async () => {
     try {
+      setCleaning(true);
       const result = await logsApi.cleanup();
       alert(`${result.deleted} logs eliminados (más de ${result.retentionDays} días)`);
       loadLogs();
       loadStats();
+      setShowCleanupConfirm(false);
     } catch (error) {
       console.error('Error limpiando logs:', error);
       alert('Error al limpiar logs');
+    } finally {
+      setCleaning(false);
     }
   };
 
@@ -90,7 +98,7 @@ export function Logs() {
               </p>
             </div>
             <button
-              onClick={handleCleanup}
+              onClick={handleCleanupClick}
               className="bmw-btn-secondary"
               style={{ 
                 backgroundColor: 'transparent',
@@ -393,6 +401,17 @@ export function Logs() {
           </div>
         </div>
       )}
+
+      <ConfirmationModal
+        isOpen={showCleanupConfirm}
+        onClose={() => setShowCleanupConfirm(false)}
+        onConfirm={handleCleanupConfirm}
+        title="Limpiar Logs Antiguos"
+        message="¿Estás seguro de que quieres eliminar los logs antiguos? Esta acción no se puede deshacer."
+        confirmText="Limpiar"
+        variant="danger"
+        loading={cleaning}
+      />
     </Layout>
   );
 }

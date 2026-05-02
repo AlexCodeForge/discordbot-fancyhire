@@ -4,19 +4,54 @@ import { Layout } from '../components/Layout';
 import { AnnouncementEditor } from '../components/AnnouncementEditor';
 import { EmbedPreview } from '../components/EmbedPreview';
 import { ChannelSelector } from '../components/ChannelSelector';
-import { AnnouncementEmbed } from '../types/Announcement';
+import { TemplateSelector } from '../components/TemplateSelector';
+import { TemplateManager } from '../components/TemplateManager';
+import { TemplateList } from '../components/TemplateList';
+import { AnnouncementHistory } from '../components/AnnouncementHistory';
+import { AnnouncementStatsModal } from '../components/AnnouncementStatsModal';
+import { CategoryList } from '../components/CategoryList';
+import { CategorySelector } from '../components/CategorySelector';
+import { AnnouncementEmbed, AnnouncementTemplate } from '../types/Announcement';
 import { SuccessModal } from '../components/SuccessModal';
 import { ErrorModal } from '../components/ErrorModal';
 
+type Tab = 'editor' | 'history' | 'templates' | 'categories';
+
 export function Announcements() {
+  const [activeTab, setActiveTab] = useState<Tab>('editor');
   const [embedData, setEmbedData] = useState<AnnouncementEmbed>({
     color: '#1c69d4',
   });
+  const [selectedTemplate, setSelectedTemplate] = useState<AnnouncementTemplate | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
   const [selectedChannel, setSelectedChannel] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [channelError, setChannelError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [selectedAnnouncementId, setSelectedAnnouncementId] = useState<number | null>(null);
+
+  const handleTemplateSelect = (template: AnnouncementTemplate | null) => {
+    setSelectedTemplate(template);
+    if (template) {
+      setEmbedData({
+        title: template.title,
+        description: template.description,
+        color: template.color,
+        url: template.url,
+        thumbnail_url: template.thumbnail_url,
+        image_url: template.image_url,
+        footer_text: template.footer_text,
+        footer_icon_url: template.footer_icon_url,
+        author_name: template.author_name,
+        author_icon_url: template.author_icon_url,
+      });
+    }
+  };
+
+  const handleTemplateSave = () => {
+    setSuccessMessage('Plantilla guardada correctamente');
+  };
 
   const handleSend = async () => {
     if (!selectedChannel) {
@@ -34,7 +69,11 @@ export function Announcements() {
     setChannelError(null);
 
     try {
-      const createResponse = await axios.post('/api/announcements', embedData);
+      const createResponse = await axios.post('/api/announcements', {
+        embedData,
+        templateId: selectedTemplate?.id,
+        categoryId: selectedCategory,
+      });
       const announcementId = createResponse.data.id;
 
       const sendResponse = await axios.post(`/api/announcements/${announcementId}/send`, {
@@ -45,6 +84,9 @@ export function Announcements() {
         setSuccessMessage('Anuncio enviado correctamente al canal de Discord');
         setEmbedData({ color: '#1c69d4' });
         setSelectedChannel('');
+        setSelectedTemplate(null);
+        setSelectedCategory(null);
+        setActiveTab('history');
       } else {
         setError(`Error al enviar anuncio: ${sendResponse.data.error}`);
       }
@@ -56,12 +98,60 @@ export function Announcements() {
     }
   };
 
+  const handleViewStats = (announcementId: number) => {
+    setSelectedAnnouncementId(announcementId);
+  };
+
+  const handleSelectTemplateForEdit = (template: AnnouncementTemplate) => {
+    setSelectedTemplate(template);
+    setEmbedData({
+      title: template.title,
+      description: template.description,
+      color: template.color,
+      url: template.url,
+      thumbnail_url: template.thumbnail_url,
+      image_url: template.image_url,
+      footer_text: template.footer_text,
+      footer_icon_url: template.footer_icon_url,
+      author_name: template.author_name,
+      author_icon_url: template.author_icon_url,
+    });
+    setActiveTab('editor');
+  };
+
+  const renderTabButton = (tab: Tab, label: string) => {
+    const isActive = activeTab === tab;
+    return (
+      <button
+        onClick={() => setActiveTab(tab)}
+        style={{
+          backgroundColor: isActive ? '#1c69d4' : 'transparent',
+          color: isActive ? '#ffffff' : '#262626',
+          fontFamily: "'BMW Type Next Latin', sans-serif",
+          fontSize: '16px',
+          fontWeight: 700,
+          lineHeight: 1.0,
+          letterSpacing: '0.5px',
+          border: 'none',
+          borderBottom: isActive ? '4px solid #1c69d4' : '4px solid transparent',
+          padding: '16px 32px',
+          cursor: 'pointer',
+          transition: 'all 0.2s',
+        }}
+      >
+        {label}
+      </button>
+    );
+  };
+
   return (
     <Layout>
       <div style={{
         padding: '32px',
         maxWidth: '1440px',
+        width: '100%',
         margin: '0 auto',
+        boxSizing: 'border-box',
       }}>
         <div style={{
           marginBottom: '32px',
@@ -88,84 +178,134 @@ export function Announcements() {
         </div>
 
         <div style={{
-          display: 'grid',
-          gridTemplateColumns: '1fr 1fr',
-          gap: '32px',
+          borderBottom: '2px solid #d6d6d6',
           marginBottom: '32px',
-        }}>
-          <div style={{
-            backgroundColor: '#fafafa',
-            padding: '24px',
-            borderRadius: '0px',
-          }}>
-            <AnnouncementEditor 
-              embedData={embedData}
-              onChange={setEmbedData}
-            />
-          </div>
-
-          <div style={{
-            position: 'sticky',
-            top: '32px',
-            alignSelf: 'start',
-          }}>
-            <EmbedPreview embedData={embedData} />
-          </div>
-        </div>
-
-        <div style={{
-          backgroundColor: '#fafafa',
-          padding: '24px',
-          borderRadius: '0px',
-          marginBottom: '24px',
-        }}>
-          <ChannelSelector
-            value={selectedChannel}
-            onChange={(value) => {
-              setSelectedChannel(value);
-              setChannelError(null);
-            }}
-            error={channelError || undefined}
-          />
-        </div>
-
-        <div style={{
           display: 'flex',
-          justifyContent: 'flex-end',
-          gap: '16px',
         }}>
-          <button
-            onClick={handleSend}
-            disabled={loading}
-            style={{
-              backgroundColor: loading ? '#d6d6d6' : '#1c69d4',
-              color: '#ffffff',
-              fontFamily: "'BMW Type Next Latin', sans-serif",
-              fontSize: '14px',
-              fontWeight: 700,
-              lineHeight: 1.0,
-              letterSpacing: '0.5px',
-              border: 'none',
-              borderRadius: '0px',
-              padding: '14px 32px',
-              height: '48px',
-              cursor: loading ? 'not-allowed' : 'pointer',
-              transition: 'background-color 0.2s',
-            }}
-            onMouseEnter={(e) => {
-              if (!loading) {
-                e.currentTarget.style.backgroundColor = '#0653b6';
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (!loading) {
-                e.currentTarget.style.backgroundColor = '#1c69d4';
-              }
-            }}
-          >
-            {loading ? 'Enviando...' : 'Enviar Anuncio'}
-          </button>
+          {renderTabButton('editor', 'Editor')}
+          {renderTabButton('templates', 'Plantillas')}
+          {renderTabButton('categories', 'Categorías')}
+          {renderTabButton('history', 'Historial')}
         </div>
+
+        {activeTab === 'editor' && (
+          <>
+            <div style={{
+              backgroundColor: '#fafafa',
+              padding: '24px',
+              borderRadius: '0px',
+              marginBottom: '24px',
+            }}>
+              <TemplateSelector
+                onSelect={handleTemplateSelect}
+                selectedTemplateId={selectedTemplate?.id}
+              />
+              <CategorySelector
+                selectedCategoryId={selectedCategory}
+                onSelect={setSelectedCategory}
+              />
+              <TemplateManager
+                embedData={embedData}
+                templateId={selectedTemplate?.id}
+                onSave={handleTemplateSave}
+              />
+            </div>
+
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr',
+              gap: '32px',
+              marginBottom: '32px',
+            }}>
+              <div style={{
+                backgroundColor: '#fafafa',
+                padding: '24px',
+                borderRadius: '0px',
+              }}>
+                <AnnouncementEditor 
+                  embedData={embedData}
+                  onChange={setEmbedData}
+                />
+              </div>
+
+              <div style={{
+                position: 'sticky',
+                top: '32px',
+                alignSelf: 'start',
+              }}>
+                <EmbedPreview embedData={embedData} />
+              </div>
+            </div>
+
+            <div style={{
+              backgroundColor: '#fafafa',
+              padding: '24px',
+              borderRadius: '0px',
+              marginBottom: '24px',
+            }}>
+              <ChannelSelector
+                value={selectedChannel}
+                onChange={(value) => {
+                  setSelectedChannel(value);
+                  setChannelError(null);
+                }}
+                error={channelError || undefined}
+              />
+            </div>
+
+            <div style={{
+              display: 'flex',
+              justifyContent: 'flex-end',
+              gap: '16px',
+            }}>
+              <button
+                onClick={handleSend}
+                disabled={loading}
+                style={{
+                  backgroundColor: loading ? '#d6d6d6' : '#1c69d4',
+                  color: '#ffffff',
+                  fontFamily: "'BMW Type Next Latin', sans-serif",
+                  fontSize: '14px',
+                  fontWeight: 700,
+                  lineHeight: 1.0,
+                  letterSpacing: '0.5px',
+                  border: 'none',
+                  borderRadius: '0px',
+                  padding: '14px 32px',
+                  height: '48px',
+                  cursor: loading ? 'not-allowed' : 'pointer',
+                  transition: 'background-color 0.2s',
+                }}
+                onMouseEnter={(e) => {
+                  if (!loading) {
+                    e.currentTarget.style.backgroundColor = '#0653b6';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!loading) {
+                    e.currentTarget.style.backgroundColor = '#1c69d4';
+                  }
+                }}
+              >
+                {loading ? 'Enviando...' : 'Enviar Anuncio'}
+              </button>
+            </div>
+          </>
+        )}
+
+        {activeTab === 'templates' && (
+          <TemplateList onSelectForEdit={handleSelectTemplateForEdit} />
+        )}
+
+        {activeTab === 'categories' && (
+          <CategoryList />
+        )}
+
+        {activeTab === 'history' && (
+          <AnnouncementHistory
+            onViewStats={handleViewStats}
+          />
+        )}
       </div>
 
       {successMessage && (
@@ -181,6 +321,13 @@ export function Announcements() {
           isOpen={!!error}
           message={error}
           onClose={() => setError(null)}
+        />
+      )}
+
+      {selectedAnnouncementId && (
+        <AnnouncementStatsModal
+          announcementId={selectedAnnouncementId}
+          onClose={() => setSelectedAnnouncementId(null)}
         />
       )}
     </Layout>
