@@ -7,6 +7,7 @@ import { EmptyState } from '../components/ui/EmptyState';
 import { CreateChannelModal } from '../components/channels/modals/CreateChannelModal';
 import { ManageCategoriesModal } from '../components/channels/modals/ManageCategoriesModal';
 import { MoveChannelsModal } from '../components/channels/modals/MoveChannelsModal';
+import { SuccessModal } from '../components/ui/modals/SuccessModal';
 import { api } from '../services/api';
 import { Channel } from '../types/Channel';
 import { ChannelMessage, CreateChannelData } from '../types/ChannelMessage';
@@ -25,6 +26,10 @@ export function ChannelsPage() {
   const [isMoveChannelsOpen, setIsMoveChannelsOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [bannerError, setBannerError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<{
+    title: string;
+    message: string;
+  } | null>(null);
 
   const loadChannels = useCallback(async () => {
     try {
@@ -150,6 +155,10 @@ export function ChannelsPage() {
         setMessages([]);
       }
       await loadChannels();
+      setSuccessMessage({
+        title: 'Canal Eliminado',
+        message: 'El canal ha sido eliminado',
+      });
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'No se pudo eliminar el canal';
       logError(msg);
@@ -314,6 +323,13 @@ export function ChannelsPage() {
         channels={channels}
         onMoveChannels={handleMoveChannels}
         onDeleteChannels={handleDeleteChannels}
+      />
+
+      <SuccessModal
+        isOpen={!!successMessage}
+        onClose={() => setSuccessMessage(null)}
+        title={successMessage?.title || ''}
+        message={successMessage?.message || ''}
       />
     </Layout>
   );

@@ -3,6 +3,7 @@ import { Layout } from '../components/ui/Layout';
 import { RoleModal } from '../components/roles/modals/RoleModal';
 import { RoleMembersModal } from '../components/roles/modals/RoleMembersModal';
 import { ConfirmationModal } from '../components/ui/modals/ConfirmationModal';
+import { SuccessModal } from '../components/ui/modals/SuccessModal';
 import { discordApi, GuildRoleDetailed, Guild } from '../services/discord';
 
 export function RolesPage() {
@@ -17,6 +18,10 @@ export function RolesPage() {
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [botRolePosition, setBotRolePosition] = useState<number>(0);
   const [viewingRole, setViewingRole] = useState<GuildRoleDetailed | null>(null);
+  const [successMessage, setSuccessMessage] = useState<{
+    title: string;
+    message: string;
+  } | null>(null);
 
   useEffect(() => {
     loadGuilds();
@@ -86,8 +91,16 @@ export function RolesPage() {
     try {
       if (editingRole) {
         await discordApi.updateRole(editingRole.id, roleData);
+        setSuccessMessage({
+          title: 'Rol Actualizado',
+          message: 'Los cambios han sido guardados',
+        });
       } else {
         await discordApi.createRole(roleData);
+        setSuccessMessage({
+          title: 'Rol Creado',
+          message: 'El rol ha sido creado en Discord',
+        });
       }
       await loadRoles();
       setShowModal(false);
@@ -105,6 +118,10 @@ export function RolesPage() {
       await loadRoles();
       setDeletingRole(null);
       setError('');
+      setSuccessMessage({
+        title: 'Rol Eliminado',
+        message: 'El rol ha sido eliminado',
+      });
     } catch (err: any) {
       const errorMsg = err.response?.data?.error || err.response?.data?.message || 'Error al eliminar rol';
       setError(errorMsg);
@@ -623,6 +640,13 @@ export function RolesPage() {
         cancelText="Cancelar"
         variant="danger"
         loading={deleteLoading}
+      />
+
+      <SuccessModal
+        isOpen={!!successMessage}
+        onClose={() => setSuccessMessage(null)}
+        title={successMessage?.title || ''}
+        message={successMessage?.message || ''}
       />
     </Layout>
   );

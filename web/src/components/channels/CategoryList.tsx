@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { AnnouncementCategory } from '../../types/Announcement';
 import { api } from '../../services/api';
 import { ConfirmationModal } from '../ui/modals/ConfirmationModal';
+import { SuccessModal } from '../ui/modals/SuccessModal';
 
 export function CategoryList() {
   const [categories, setCategories] = useState<AnnouncementCategory[]>([]);
@@ -13,6 +14,10 @@ export function CategoryList() {
   const [formData, setFormData] = useState({ name: '', color: '#1c69d4', description: '' });
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [successMessage, setSuccessMessage] = useState<{
+    title: string;
+    message: string;
+  } | null>(null);
 
   useEffect(() => {
     loadCategories();
@@ -56,8 +61,16 @@ export function CategoryList() {
       setSaving(true);
       if (editingCategory) {
         await api.updateAnnouncementCategory(editingCategory.id, formData);
+        setSuccessMessage({
+          title: 'Categoría Actualizada',
+          message: 'Los cambios han sido guardados',
+        });
       } else {
         await api.createAnnouncementCategory(formData);
+        setSuccessMessage({
+          title: 'Categoría Creada',
+          message: 'La categoría ha sido agregada',
+        });
       }
       await loadCategories();
       setShowModal(false);
@@ -83,6 +96,10 @@ export function CategoryList() {
       await loadCategories();
       setShowDeleteConfirm(false);
       setCategoryToDelete(null);
+      setSuccessMessage({
+        title: 'Categoría Eliminada',
+        message: 'La categoría ha sido eliminada',
+      });
     } catch (error) {
       console.error('Error deleting category:', error);
       alert('Error al eliminar la categoría');
@@ -427,6 +444,13 @@ export function CategoryList() {
         confirmText="Eliminar"
         variant="danger"
         loading={deleting}
+      />
+
+      <SuccessModal
+        isOpen={!!successMessage}
+        onClose={() => setSuccessMessage(null)}
+        title={successMessage?.title || ''}
+        message={successMessage?.message || ''}
       />
     </div>
   );

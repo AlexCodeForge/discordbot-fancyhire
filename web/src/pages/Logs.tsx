@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { logsApi, SystemLog, LogStats } from '../services/logs';
 import { Layout } from '../components/ui/Layout';
 import { ConfirmationModal } from '../components/ui/modals/ConfirmationModal';
+import { SuccessModal } from '../components/ui/modals/SuccessModal';
 
 const LEVELS = ['error', 'warning', 'info', 'debug'] as const;
 const LEVEL_COLORS = {
@@ -21,6 +22,11 @@ export function Logs() {
   const [selectedLog, setSelectedLog] = useState<SystemLog | null>(null);
   const [showCleanupConfirm, setShowCleanupConfirm] = useState(false);
   const [cleaning, setCleaning] = useState(false);
+  const [successMessage, setSuccessMessage] = useState<{
+    title: string;
+    message: string;
+    details?: Array<{ label: string; value: string }>;
+  } | null>(null);
   const limit = 50;
 
   useEffect(() => {
@@ -62,7 +68,14 @@ export function Logs() {
     try {
       setCleaning(true);
       const result = await logsApi.cleanup();
-      alert(`${result.deleted} logs eliminados (más de ${result.retentionDays} días)`);
+      setSuccessMessage({
+        title: 'Logs Limpiados',
+        message: 'Los logs antiguos han sido eliminados correctamente',
+        details: [
+          { label: 'Logs eliminados', value: result.deleted.toString() },
+          { label: 'Retención', value: `${result.retentionDays} días` }
+        ]
+      });
       loadLogs();
       loadStats();
       setShowCleanupConfirm(false);
@@ -411,6 +424,14 @@ export function Logs() {
         confirmText="Limpiar"
         variant="danger"
         loading={cleaning}
+      />
+
+      <SuccessModal
+        isOpen={!!successMessage}
+        onClose={() => setSuccessMessage(null)}
+        title={successMessage?.title || ''}
+        message={successMessage?.message || ''}
+        details={successMessage?.details}
       />
     </Layout>
   );

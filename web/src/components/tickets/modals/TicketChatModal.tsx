@@ -133,8 +133,13 @@ export function TicketChatModal({ ticket, onClose, onTicketUpdated }: TicketChat
         });
         setShowSuccessModal(true);
       } else {
-        onTicketUpdated();
-        onClose();
+        setSuccessData({
+          title: 'Ticket Cerrado',
+          message: deleteChannel 
+            ? 'El ticket ha sido cerrado y el canal ha sido eliminado de Discord.' 
+            : 'El ticket ha sido cerrado correctamente.',
+        });
+        setShowSuccessModal(true);
       }
     } catch (error: any) {
       console.error('Error cerrando ticket:', error);

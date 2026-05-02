@@ -6,6 +6,7 @@ import { TicketsPanel } from '../tickets/TicketsPanel';
 import { TicketChatModal } from '../tickets/modals/TicketChatModal';
 import { ConfirmationModal } from '../ui/modals/ConfirmationModal';
 import { ErrorModal } from '../ui/modals/ErrorModal';
+import { SuccessModal } from '../ui/modals/SuccessModal';
 
 interface LeadModalProps {
   lead: Lead;
@@ -25,6 +26,10 @@ export function LeadModal({ lead, onClose, onUpdate }: LeadModalProps) {
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [successMessage, setSuccessMessage] = useState<{
+    title: string;
+    message: string;
+  } | null>(null);
 
   useEffect(() => {
     loadHistory();
@@ -55,8 +60,11 @@ export function LeadModal({ lead, onClose, onUpdate }: LeadModalProps) {
     setLoading(true);
     try {
       await api.updateLead(lead.id, editedLead);
+      setSuccessMessage({
+        title: 'Lead Actualizado',
+        message: 'Los cambios han sido guardados',
+      });
       onUpdate();
-      onClose();
     } catch (error: any) {
       console.error('Error actualizando lead:', error);
       setErrorMessage(error.response?.data?.message || error.message || 'Error al actualizar el lead');
@@ -71,8 +79,11 @@ export function LeadModal({ lead, onClose, onUpdate }: LeadModalProps) {
     try {
       await api.deleteLead(lead.id);
       setShowDeleteConfirm(false);
+      setSuccessMessage({
+        title: 'Lead Eliminado',
+        message: 'El lead ha sido eliminado del sistema',
+      });
       onUpdate();
-      onClose();
     } catch (error: any) {
       console.error('Error eliminando lead:', error);
       setErrorMessage(error.response?.data?.message || error.message || 'Error al eliminar el lead');
@@ -85,6 +96,16 @@ export function LeadModal({ lead, onClose, onUpdate }: LeadModalProps) {
 
   return (
     <>
+      <SuccessModal
+        isOpen={!!successMessage}
+        onClose={() => {
+          setSuccessMessage(null);
+          onClose();
+        }}
+        title={successMessage?.title || ''}
+        message={successMessage?.message || ''}
+      />
+
       {showChat && (
         <ChatModal
           lead={lead}

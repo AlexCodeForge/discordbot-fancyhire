@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { api } from '../../services/api';
 
 interface TicketsPanelProps {
@@ -11,10 +12,18 @@ export function TicketsPanel({ leadId, onTicketSelect }: TicketsPanelProps) {
   const [loading, setLoading] = useState(false);
   const [creating, setCreating] = useState(false);
   const [channelExistence, setChannelExistence] = useState<Record<number, boolean>>({});
+  const [successMessage, setSuccessMessage] = useState<{
+    title: string;
+    message: string;
+  } | null>(null);
 
   useEffect(() => {
     loadTickets();
   }, [leadId]);
+
+  useEffect(() => {
+    console.log('[TicketsPanel] successMessage changed:', successMessage);
+  }, [successMessage]);
 
   const loadTickets = async () => {
     setLoading(true);
@@ -52,6 +61,12 @@ export function TicketsPanel({ leadId, onTicketSelect }: TicketsPanelProps) {
       const username = localStorage.getItem('username') || 'Admin';
       await api.createTicket(leadId, username);
       await loadTickets();
+      console.log('[TicketsPanel] Setting success message...');
+      setSuccessMessage({
+        title: 'Ticket Creado',
+        message: 'El ticket ha sido creado correctamente',
+      });
+      console.log('[TicketsPanel] Success message set');
     } catch (error: any) {
       console.error('Error creando ticket:', error);
       alert(error.message || 'Error al crear ticket');
@@ -98,7 +113,8 @@ export function TicketsPanel({ leadId, onTicketSelect }: TicketsPanelProps) {
   }
 
   return (
-    <div>
+    <>
+      <div>
       <div className="flex justify-between items-center mb-4">
         <h3 className="bmw-title-sm">Tickets de Soporte</h3>
         {openTickets.length === 0 && (
@@ -238,5 +254,118 @@ export function TicketsPanel({ leadId, onTicketSelect }: TicketsPanelProps) {
         </div>
       )}
     </div>
+
+    {successMessage && (
+      <>
+        {console.log('[TicketsPanel] Rendering portal with message:', successMessage)}
+        {createPortal(
+          <div
+            className="fixed inset-0 flex items-center justify-center"
+            style={{
+              backgroundColor: 'rgba(0, 0, 0, 0.7)',
+              zIndex: 9999,
+            }}
+            onClick={() => {
+              console.log('[TicketsPanel] Closing modal');
+              setSuccessMessage(null);
+            }}
+          >
+            <div
+              className="bmw-card"
+              style={{
+                width: '520px',
+                maxWidth: '90vw',
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div
+                style={{
+                  padding: '24px',
+                  display: 'flex',
+                  gap: '16px',
+                  alignItems: 'flex-start',
+                }}
+              >
+                <div
+                  style={{
+                    width: '56px',
+                    height: '56px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                    borderRadius: '0',
+                    flexShrink: 0,
+                  }}
+                >
+                  <svg
+                    width="32"
+                    height="32"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                    style={{ color: 'var(--bmw-success)' }}
+                  >
+                    <path
+                      d="M20 6L9 17l-5-5"
+                      stroke="currentColor"
+                      strokeWidth="2.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </div>
+
+                <div style={{ flex: 1 }}>
+                  <h2
+                    className="bmw-title-lg"
+                    style={{
+                      color: 'var(--bmw-ink)',
+                      marginBottom: '8px',
+                    }}
+                  >
+                    {successMessage.title}
+                  </h2>
+                  <p
+                    className="bmw-body-md"
+                    style={{
+                      color: 'var(--bmw-body)',
+                      lineHeight: '1.5',
+                    }}
+                  >
+                    {successMessage.message}
+                  </p>
+                </div>
+              </div>
+
+              <div
+                style={{
+                  padding: '24px',
+                  paddingTop: '0',
+                  display: 'flex',
+                  justifyContent: 'flex-end',
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={() => {
+                    console.log('[TicketsPanel] Button clicked, closing modal');
+                    setSuccessMessage(null);
+                  }}
+                  className="bmw-btn-primary"
+                  style={{
+                    minWidth: '140px',
+                  }}
+                >
+                  Entendido
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
+      </>
+    )}
+    </>
   );
 }

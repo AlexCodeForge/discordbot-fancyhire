@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import type { Channel } from '../../../types/Channel';
 import type { CreateChannelData } from '../../../types/ChannelMessage';
+import { SuccessModal } from '../../ui/modals/SuccessModal';
 
 const CHANNEL_TYPE_OPTIONS: { label: string; value: string }[] = [
   { label: 'Texto', value: 'GUILD_TEXT' },
@@ -30,6 +31,10 @@ export function CreateChannelModal({
   const [touchedName, setTouchedName] = useState(false);
   const [loading, setLoading] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<{
+    title: string;
+    message: string;
+  } | null>(null);
 
   const formatChannelName = (input: string): string => {
     return input
@@ -86,7 +91,10 @@ export function CreateChannelModal({
       };
       try {
         await onCreate(payload);
-        onClose();
+        setSuccessMessage({
+          title: 'Canal Creado',
+          message: 'El canal ha sido creado en Discord',
+        });
       } catch (err) {
         setSubmitError(
           err instanceof Error ? err.message : 'No se pudo crear el canal'
@@ -95,13 +103,24 @@ export function CreateChannelModal({
         setLoading(false);
       }
     },
-    [formattedName, type, topic, parentId, onCreate, onClose]
+    [formattedName, type, topic, parentId, onCreate]
   );
 
   if (!mounted) return null;
 
   return (
-    <div
+    <>
+      <SuccessModal
+        isOpen={!!successMessage}
+        onClose={() => {
+          setSuccessMessage(null);
+          onClose();
+        }}
+        title={successMessage?.title || ''}
+        message={successMessage?.message || ''}
+      />
+
+      <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
       style={{
         backgroundColor: 'rgba(0, 0, 0, 0.5)',
@@ -277,5 +296,6 @@ export function CreateChannelModal({
         </form>
       </div>
     </div>
+    </>
   );
 }

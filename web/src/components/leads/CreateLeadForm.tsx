@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { api } from '../../services/api';
+import { SuccessModal } from '../ui/modals/SuccessModal';
 
 interface CreateLeadFormProps {
   onClose: () => void;
@@ -24,6 +25,10 @@ export function CreateLeadForm({ onClose, onSuccess }: CreateLeadFormProps) {
   const [serviceInterest, setServiceInterest] = useState('');
   const [loading, setLoading] = useState(false);
   const [loadingMembers, setLoadingMembers] = useState(true);
+  const [successMessage, setSuccessMessage] = useState<{
+    title: string;
+    message: string;
+  } | null>(null);
 
   useEffect(() => {
     loadMembers();
@@ -76,8 +81,11 @@ export function CreateLeadForm({ onClose, onSuccess }: CreateLeadFormProps) {
         stage: 'nuevo',
         source: 'manual',
       });
+      setSuccessMessage({
+        title: 'Lead Creado',
+        message: 'El lead ha sido agregado correctamente',
+      });
       onSuccess();
-      onClose();
     } catch (error) {
       console.error('Error creando lead:', error);
       alert('Error al crear el lead');
@@ -87,9 +95,20 @@ export function CreateLeadForm({ onClose, onSuccess }: CreateLeadFormProps) {
   };
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center z-50 p-4" style={{ 
-      backgroundColor: 'rgba(0, 0, 0, 0.5)'
-    }}>
+    <>
+      <SuccessModal
+        isOpen={!!successMessage}
+        onClose={() => {
+          setSuccessMessage(null);
+          onClose();
+        }}
+        title={successMessage?.title || ''}
+        message={successMessage?.message || ''}
+      />
+
+      <div className="fixed inset-0 flex items-center justify-center z-50 p-4" style={{ 
+        backgroundColor: 'rgba(0, 0, 0, 0.5)'
+      }}>
       <div className="max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col" style={{ 
         backgroundColor: 'var(--bmw-surface-card)',
         borderRadius: '0',
@@ -258,5 +277,6 @@ export function CreateLeadForm({ onClose, onSuccess }: CreateLeadFormProps) {
         </div>
       </div>
     </div>
+    </>
   );
 }

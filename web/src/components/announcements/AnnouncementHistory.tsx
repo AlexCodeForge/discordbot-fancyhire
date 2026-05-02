@@ -3,6 +3,7 @@ import { Announcement, AnnouncementCategory } from '../../types/Announcement';
 import { api } from '../../services/api';
 import { ConfirmationModal } from '../ui/modals/ConfirmationModal';
 import { EditAnnouncementModal } from './modals/EditAnnouncementModal';
+import { SuccessModal } from '../ui/modals/SuccessModal';
 
 interface AnnouncementHistoryProps {
   onViewStats: (announcementId: number) => void;
@@ -21,6 +22,10 @@ export function AnnouncementHistory({ onViewStats, onRefresh }: AnnouncementHist
   const [deleting, setDeleting] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [announcementToEdit, setAnnouncementToEdit] = useState<Announcement | null>(null);
+  const [successMessage, setSuccessMessage] = useState<{
+    title: string;
+    message: string;
+  } | null>(null);
 
   useEffect(() => {
     loadData();
@@ -59,6 +64,10 @@ export function AnnouncementHistory({ onViewStats, onRefresh }: AnnouncementHist
   const handleEditSuccess = async () => {
     await loadAnnouncements();
     if (onRefresh) onRefresh();
+    setSuccessMessage({
+      title: 'Anuncio Actualizado',
+      message: 'El anuncio ha sido actualizado en Discord',
+    });
   };
 
   const handleDeleteClick = (id: number) => {
@@ -76,6 +85,10 @@ export function AnnouncementHistory({ onViewStats, onRefresh }: AnnouncementHist
       if (onRefresh) onRefresh();
       setShowDeleteConfirm(false);
       setAnnouncementToDelete(null);
+      setSuccessMessage({
+        title: 'Anuncio Eliminado',
+        message: 'El anuncio ha sido eliminado',
+      });
     } catch (error) {
       console.error('Error deleting announcement:', error);
       alert('Error al eliminar el anuncio');
@@ -444,6 +457,13 @@ export function AnnouncementHistory({ onViewStats, onRefresh }: AnnouncementHist
           onSuccess={handleEditSuccess}
         />
       )}
+
+      <SuccessModal
+        isOpen={!!successMessage}
+        onClose={() => setSuccessMessage(null)}
+        title={successMessage?.title || ''}
+        message={successMessage?.message || ''}
+      />
     </div>
   );
 }

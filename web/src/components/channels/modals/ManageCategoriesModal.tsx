@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import type { Channel } from '../../../types/Channel';
 import { ConfirmationModal } from '../../ui/modals/ConfirmationModal';
+import { SuccessModal } from '../../ui/modals/SuccessModal';
 
 export interface ManageCategoriesModalProps {
   isOpen: boolean;
@@ -26,6 +27,10 @@ export function ManageCategoriesModal({
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [categoryToDelete, setCategoryToDelete] = useState<Channel | null>(null);
+  const [successMessage, setSuccessMessage] = useState<{
+    title: string;
+    message: string;
+  } | null>(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -73,6 +78,10 @@ export function ManageCategoriesModal({
         await onCreateCategory(formattedName);
         setName('');
         setTouchedName(false);
+        setSuccessMessage({
+          title: 'Categoría Creada',
+          message: 'La categoría ha sido agregada',
+        });
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'No se pudo crear la categoría';
         setSubmitError(errorMessage);
@@ -98,6 +107,10 @@ export function ManageCategoriesModal({
     try {
       await onDeleteCategory(categoryToDelete);
       setCategoryToDelete(null);
+      setSuccessMessage({
+        title: 'Categoría Eliminada',
+        message: 'La categoría ha sido eliminada',
+      });
     } catch (err) {
       setSubmitError(
         err instanceof Error ? err.message : 'No se pudo eliminar la categoría'
@@ -110,7 +123,15 @@ export function ManageCategoriesModal({
   if (!mounted) return null;
 
   return (
-    <div
+    <>
+      <SuccessModal
+        isOpen={!!successMessage}
+        onClose={() => setSuccessMessage(null)}
+        title={successMessage?.title || ''}
+        message={successMessage?.message || ''}
+      />
+
+      <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
       style={{
         backgroundColor: 'rgba(0, 0, 0, 0.5)',
@@ -329,6 +350,7 @@ export function ManageCategoriesModal({
           </button>
         </div>
       </div>
+    </div>
 
       <ConfirmationModal
         isOpen={isConfirmOpen}
@@ -341,6 +363,6 @@ export function ManageCategoriesModal({
         variant="danger"
         loading={deletingId !== null}
       />
-    </div>
+    </>
   );
 }

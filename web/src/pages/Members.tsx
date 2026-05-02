@@ -3,6 +3,7 @@ import { discordApi, DiscordMember, Guild, GuildRole } from '../services/discord
 import { Layout } from '../components/ui/Layout';
 import { MemberAvatar } from '../components/ui/MemberAvatar';
 import { RoleBadge } from '../components/roles/RoleBadge';
+import { SuccessModal } from '../components/ui/modals/SuccessModal';
 
 export function Members() {
   const [members, setMembers] = useState<DiscordMember[]>([]);
@@ -19,6 +20,10 @@ export function Members() {
   const [guildRoles, setGuildRoles] = useState<GuildRole[]>([]);
   const [selectedRoleIds, setSelectedRoleIds] = useState<string[]>([]);
   const [updatingRoles, setUpdatingRoles] = useState(false);
+  const [successMessage, setSuccessMessage] = useState<{
+    title: string;
+    message: string;
+  } | null>(null);
   const itemsPerPage = 50;
 
   useEffect(() => {
@@ -76,7 +81,10 @@ export function Members() {
     try {
       setUpdatingRoles(true);
       await discordApi.updateMemberRoles(editingMember.id, selectedGuild, selectedRoleIds);
-      alert('✓ Roles actualizados correctamente');
+      setSuccessMessage({
+        title: 'Roles Actualizados',
+        message: 'Los roles han sido actualizados correctamente',
+      });
       setEditingMember(null);
       await loadMembers();
     } catch (error: any) {
@@ -877,6 +885,13 @@ export function Members() {
           </div>
         </div>
       )}
+
+      <SuccessModal
+        isOpen={!!successMessage}
+        onClose={() => setSuccessMessage(null)}
+        title={successMessage?.title || ''}
+        message={successMessage?.message || ''}
+      />
     </Layout>
   );
 }
