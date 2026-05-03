@@ -57,9 +57,14 @@ export function ChannelsPage() {
     }
   }, []);
 
-  const loadMessages = useCallback(async (channelId: number) => {
+  const loadMessages = useCallback(async (channelId: number, channel?: Channel) => {
     try {
-      const data = await api.getChannelMessages(channelId);
+      let data;
+      if (channel?.ticket_id) {
+        data = await api.getTicketMessagesByChannelId(channel.discord_channel_id);
+      } else {
+        data = await api.getChannelMessages(channelId);
+      }
       setMessages(data);
       setBannerError(null);
     } catch (e) {
@@ -149,6 +154,11 @@ export function ChannelsPage() {
           const data = await api.getForumThreads(id);
           if (!cancelled) {
             setThreads(data);
+          }
+        } else if (selectedChannel.ticket_id) {
+          const data = await api.getTicketMessagesByChannelId(selectedChannel.discord_channel_id);
+          if (!cancelled) {
+            setMessages(data);
           }
         } else {
           const data = await api.getChannelMessages(id);

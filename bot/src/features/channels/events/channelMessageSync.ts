@@ -30,12 +30,12 @@ export async function syncChannelMessages(client: Client, channelId: string): Pr
 
       try {
         const existsResponse = await axios.get(
-          `${config.apiUrl}/api/channels/messages/check/${msg.id}`
+          `${config.apiUrl}/api/bot/channels/messages/check/${msg.id}`
         );
 
         if (!existsResponse.data.exists) {
           await axios.post(
-            `${config.apiUrl}/api/channels/messages/incoming`,
+            `${config.apiUrl}/api/bot/channels/messages/incoming`,
             buildChannelIncomingPayload(msg)
           );
         }

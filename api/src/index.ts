@@ -173,6 +173,139 @@ app.delete('/api/bot/channels/:channelId', async (req, res, next) => {
   }
 });
 
+// Webhook del bot para limpiar canales obsoletos - sin autenticación
+app.post('/api/bot/channels/cleanup', async (req, res, next) => {
+  try {
+    const { validChannelIds } = req.body;
+    
+    if (!Array.isArray(validChannelIds)) {
+      return res.status(400).json({ error: 'validChannelIds debe ser un array' });
+    }
+
+    const { ChannelModel } = await import('./features/channels/models/Channel.js');
+    const { pool } = await import('./shared/database/database.js');
+    
+    // Obtener todos los canales actuales en BD
+    const allChannels = await ChannelModel.getAll();
+    
+    // Identificar canales que ya no existen en Discord
+    const obsoleteChannels = allChannels.filter(
+      channel => !validChannelIds.includes(channel.discord_channel_id)
+    );
+    
+    // Eliminar canales obsoletos
+    let deletedCount = 0;
+    for (const channel of obsoleteChannels) {
+      try {
+        await ChannelModel.delete(channel.discord_channel_id);
+        deletedCount++;
+        console.log(`Canal obsoleto eliminado: ${channel.name} (${channel.discord_channel_id})`);
+      } catch (err) {
+        console.error(`Error eliminando canal ${channel.discord_channel_id}:`, err);
+      }
+    }
+    
+    res.json({ 
+      success: true, 
+      deletedCount,
+      obsoleteChannels: obsoleteChannels.map(c => ({
+        id: c.discord_channel_id,
+        name: c.name
+      }))
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Webhook del bot para verificar mensajes - sin autenticación
+app.get('/api/bot/channels/messages/check/:discordMessageId', async (req, res, next) => {
+  try {
+    const { discordMessageId } = req.params;
+    const { ChannelMessageModel } = await import('./features/channels/models/ChannelMessage.js');
+    const exists = await ChannelMessageModel.exists(discordMessageId);
+    res.json({ exists });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Webhook del bot para mensajes entrantes de canales - sin autenticación
+app.post('/api/bot/channels/messages/incoming', async (req, res, next) => {
+  try {
+    const {
+      discord_channel_id,
+      discord_message_id,
+      author_id,
+      author_name,
+      author_avatar,
+      content,
+      mentions,
+      sent_at,
+    } = req.body;
+
+    if (!discord_channel_id || !discord_message_id || !author_id || !content) {
+      return res.status(400).json({
+        error: 'discord_channel_id, discord_message_id, author_id y content son requeridos',
+      });
+    }
+
+    const { ChannelModel } = await import('./features/channels/models/Channel.js');
+    const { ChannelMessageModel } = await import('./features/channels/models/ChannelMessage.js');
+
+    const channel = await ChannelModel.getByDiscordId(discord_channel_id);
+
+    if (!channel) {
+      return res.status(404).json({ error: 'Canal no encontrado' });
+    }
+
+    const message = await ChannelMessageModel.create({
+      channel_id: channel.id,
+      discord_message_id,
+      author_id,
+      author_name,
+      author_avatar,
+      content,
+      mentions: Array.isArray(mentions) ? mentions : [],
+      sent_at: sent_at ? new Date(sent_at) : null,
+    });
+
+    res.json(message);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Webhook del bot para eliminar mensajes - sin autenticación
+app.patch('/api/bot/channels/messages/:discordMessageId/delete', async (req, res, next) => {
+  try {
+    const { discordMessageId } = req.params;
+    const { ChannelMessageModel } = await import('./features/channels/models/ChannelMessage.js');
+    await ChannelMessageModel.softDelete(discordMessageId);
+    res.json({ success: true });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Webhook del bot para actualizar mensajes - sin autenticación
+app.patch('/api/bot/channels/messages/:discordMessageId', async (req, res, next) => {
+  try {
+    const { discordMessageId } = req.params;
+    const { content } = req.body;
+
+    if (content === undefined || content === null) {
+      return res.status(400).json({ error: 'content es requerido' });
+    }
+
+    const { ChannelMessageModel } = await import('./features/channels/models/ChannelMessage.js');
+    await ChannelMessageModel.update(discordMessageId, String(content));
+    res.json({ success: true });
+  } catch (error) {
+    next(error);
+  }
+});
+
 app.use('/api/channels', authMiddleware, channelMessagesRouter);
 app.use('/api/channels', authMiddleware, channelsRouter);
 app.use('/api/forum', forumRouter);

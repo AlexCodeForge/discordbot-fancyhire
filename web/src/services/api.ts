@@ -210,6 +210,18 @@ export const api = {
     }
   },
 
+  async getTicketMessagesByChannelId(discordChannelId: string): Promise<any[]> {
+    try {
+      const response = await axios.get(`${TICKETS_URL}/channel/${discordChannelId}/messages`);
+      return response.data;
+    } catch (err) {
+      if (axios.isAxiosError(err) && err.response?.status === 404) {
+        return [];
+      }
+      handleApiError(err, 'getTicketMessagesByChannelId');
+    }
+  },
+
   async closeTicket(ticketId: number, closedBy: string, notes?: string): Promise<any> {
     try {
       const response = await axios.post(`${TICKETS_URL}/${ticketId}/close`, {

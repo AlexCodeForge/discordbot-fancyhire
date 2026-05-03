@@ -65,6 +65,23 @@ router.get('/lead/:leadId', async (req, res, next) => {
   }
 });
 
+router.get('/channel/:discordChannelId/messages', async (req, res, next) => {
+  try {
+    const { discordChannelId } = req.params;
+    
+    const ticket = await TicketModel.getByChannelId(discordChannelId);
+    if (!ticket) {
+      return res.status(404).json({ error: 'Ticket no encontrado para este canal' });
+    }
+
+    const messages = await TicketMessageModel.getByTicket(ticket.id);
+    res.json(messages);
+  } catch (error) {
+    Logger.error('Error obteniendo mensajes de ticket por canal', { discordChannelId: req.params.discordChannelId }, error as Error, req);
+    next(error);
+  }
+});
+
 router.get('/metrics/stats', async (req, res, next) => {
   try {
     const metrics = await TicketModel.getMetrics();
@@ -250,6 +267,25 @@ router.get('/:ticketId/channel-exists', async (req, res, next) => {
     res.json({ exists });
   } catch (error: any) {
     Logger.error('Error verificando canal de ticket', { ticketId: req.params.ticketId }, error as Error, req);
+    next(error);
+  }
+});
+
+router.patch('/channel/:channelId/archive', async (req, res, next) => {
+  try {
+    const { channelId } = req.params;
+    
+    const ticket = await TicketModel.updateStatusByChannelId(channelId, 'archived');
+    
+    if (!ticket) {
+      Logger.warning('No se encontró ticket para archivar', { channelId }, req);
+      return res.status(404).json({ error: 'Ticket no encontrado para este canal' });
+    }
+    
+    Logger.info('Ticket archivado por eliminación de canal', { ticketId: ticket.id, channelId }, req);
+    res.json(ticket);
+  } catch (error) {
+    Logger.error('Error archivando ticket por canal', { channelId: req.params.channelId }, error as Error, req);
     next(error);
   }
 });

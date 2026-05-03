@@ -12,6 +12,13 @@ export interface Channel {
   updated_at: Date;
 }
 
+export interface ChannelWithTicket extends Channel {
+  ticket_id?: number;
+  lead_id?: number;
+  ticket_status?: 'open' | 'closed' | 'archived';
+  ticket_created_by?: string;
+}
+
 export interface ChannelData {
   discord_channel_id: string;
   name: string;
@@ -26,6 +33,22 @@ export class ChannelModel {
     const result = await pool.query(
       'SELECT * FROM channels ORDER BY position ASC NULLS LAST, id ASC'
     );
+    return result.rows;
+  }
+
+  static async getAllWithTicketInfo(): Promise<ChannelWithTicket[]> {
+    const query = `
+      SELECT 
+        c.*,
+        t.id as ticket_id,
+        t.lead_id,
+        t.status as ticket_status,
+        t.created_by as ticket_created_by
+      FROM channels c
+      LEFT JOIN tickets t ON c.discord_channel_id = t.discord_channel_id
+      ORDER BY c.position ASC NULLS LAST, c.id ASC
+    `;
+    const result = await pool.query(query);
     return result.rows;
   }
 

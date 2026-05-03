@@ -51,6 +51,16 @@ export async function syncAllChannels(client: Client): Promise<void> {
     
     console.log(`[DEBUG] channelIds.length: ${channelIds.length}`);
     
+    // Limpiar canales que ya no existen en Discord
+    try {
+      await axios.post(`${config.apiUrl}/api/bot/channels/cleanup`, {
+        validChannelIds: channelIds
+      });
+      console.log('Limpieza de canales obsoletos completada');
+    } catch (err) {
+      console.error('Error limpiando canales obsoletos:', err);
+    }
+    
     // Sincronizar mensajes solo de canales que soporten mensajes (no foros ni categorías)
     console.log(`Sincronizando mensajes de canales de texto...`);
     for (const channelId of channelIds) {

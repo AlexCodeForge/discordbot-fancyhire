@@ -8,4 +8,8 @@ export interface Channel {
   topic: string | null;
   created_at: string;
   updated_at: string;
+  ticket_id?: number;
+  lead_id?: number;
+  ticket_status?: 'open' | 'closed' | 'archived';
+  ticket_created_by?: string;
 }

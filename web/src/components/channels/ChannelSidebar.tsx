@@ -88,6 +88,55 @@ function getChannelTypeName(channel: Channel): string {
   return 'Texto';
 }
 
+function TicketIcon({ className, color = 'currentColor' }: { className?: string; color?: string }) {
+  return (
+    <svg
+      className={className}
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <path
+        d="M4 6C4 4.89543 4.89543 4 6 4H18C19.1046 4 20 4.89543 20 6V9C19.4696 9 18.9609 9.21071 18.5858 9.58579C18.2107 9.96086 18 10.4696 18 11C18 11.5304 18.2107 12.0391 18.5858 12.4142C18.9609 12.7893 19.4696 13 20 13V18C20 19.1046 19.1046 20 18 20H6C4.89543 20 4 19.1046 4 18V13C4.53043 13 5.03914 12.7893 5.41421 12.4142C5.78929 12.0391 6 11.5304 6 11C6 10.4696 5.78929 9.96086 5.41421 9.58579C5.03914 9.21071 4.53043 9 4 9V6Z"
+        stroke={color}
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M10 9L10 15"
+        stroke={color}
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M14 9L14 15"
+        stroke={color}
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function getTicketStatusColor(status?: 'open' | 'closed' | 'archived'): string {
+  if (!status) return 'var(--bmw-accent-secondary)';
+  switch (status) {
+    case 'open':
+      return '#00d26a';
+    case 'closed':
+      return '#8a8a8a';
+    case 'archived':
+      return 'var(--bmw-accent-secondary)';
+    default:
+      return 'var(--bmw-accent-secondary)';
+  }
+}
+
 function ChannelItem({
   channel,
   isSelected,
@@ -95,6 +144,7 @@ function ChannelItem({
 }: ChannelItemProps) {
   const icon = getChannelIcon(channel);
   const typeName = getChannelTypeName(channel);
+  const isTicket = !!channel.ticket_id;
   
   return (
     <li>
@@ -126,16 +176,33 @@ function ChannelItem({
             e.currentTarget.style.backgroundColor = 'transparent';
           }
         }}
-        title={`${typeName}: ${channel.name}`}
+        title={`${typeName}: ${channel.name}${isTicket ? ` (Ticket ${channel.ticket_status})` : ''}`}
       >
         <span style={{ fontSize: '16px', lineHeight: 1 }}>{icon}</span>
         <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {channel.name}
         </span>
+        {isTicket && (
+          <span
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '4px 6px',
+              backgroundColor: getTicketStatusColor(channel.ticket_status),
+              borderRadius: '2px',
+              flexShrink: 0,
+            }}
+          >
+            <TicketIcon color="#fff" />
+          </span>
+        )}
       </button>
     </li>
   );
 }
+
+type ChannelFilter = 'all' | 'tickets' | 'normal';
 
 export function ChannelSidebar({
   channels,
@@ -145,9 +212,18 @@ export function ChannelSidebar({
   onOpenMoveModal,
   onManageCategories,
 }: ChannelSidebarProps) {
-  const groups = useMemo(() => buildChannelGroups(channels), [channels]);
+  const [filter, setFilter] = useState<ChannelFilter>('all');
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+
+  const filteredChannels = useMemo(() => {
+    if (filter === 'all') return channels;
+    if (filter === 'tickets') return channels.filter((ch) => !!ch.ticket_id);
+    if (filter === 'normal') return channels.filter((ch) => !ch.ticket_id);
+    return channels;
+  }, [channels, filter]);
+
+  const groups = useMemo(() => buildChannelGroups(filteredChannels), [filteredChannels]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -322,6 +398,28 @@ export function ChannelSidebar({
               </div>
             )}
           </div>
+        </div>
+        
+        <div style={{ width: '100%' }}>
+          <select
+            value={filter}
+            onChange={(e) => setFilter(e.target.value as ChannelFilter)}
+            className="bmw-body-sm"
+            style={{
+              width: '100%',
+              padding: '8px 12px',
+              backgroundColor: 'var(--bmw-canvas)',
+              color: 'var(--bmw-ink)',
+              border: '1px solid var(--bmw-hairline)',
+              fontFamily: 'inherit',
+              fontSize: '14px',
+              cursor: 'pointer',
+            }}
+          >
+            <option value="all">Todos los canales</option>
+            <option value="tickets">Solo tickets</option>
+            <option value="normal">Solo canales normales</option>
+          </select>
         </div>
       </header>
 

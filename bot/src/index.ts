@@ -322,7 +322,7 @@ client.once(Events.ClientReady, async (c) => {
   setInterval(async () => {
     console.log('Sincronizando canales con la API...');
     await syncAllChannels(client);
-  }, 600000);
+  }, 60000);
 });
 
 client.on(Events.GuildMemberAdd, async (member: GuildMember) => {
@@ -514,7 +514,7 @@ client.on(Events.MessageCreate, async (message) => {
 
     try {
       await axios.post(
-        `${config.apiUrl}/api/channels/messages/incoming`,
+        `${config.apiUrl}/api/bot/channels/messages/incoming`,
         buildChannelIncomingPayload(message)
       );
       console.log(`Mensaje de canal ${message.channelId} guardado en BD`);
@@ -540,7 +540,19 @@ client.on(Events.ChannelCreate, async (channel) => {
 client.on(Events.ChannelDelete, async (channel) => {
   if (channel.isDMBased()) return;
   try {
-    await axios.delete(`${config.apiUrl}/api/channels/${channel.id}`);
+    // Intentar archivar el ticket si existe
+    try {
+      await axios.patch(`${config.apiUrl}/api/tickets/channel/${channel.id}/archive`);
+      console.log(`[TICKET] Ticket archivado para canal eliminado: ${channel.id}`);
+    } catch (ticketError: any) {
+      // Si no hay ticket, 404 es esperado
+      if (ticketError.response?.status !== 404) {
+        console.error('Error al archivar ticket:', ticketError.response?.data || ticketError.message);
+      }
+    }
+
+    // Eliminar el canal de la tabla channels usando el endpoint del bot (sin auth)
+    await axios.delete(`${config.apiUrl}/api/bot/channels/${channel.id}`);
   } catch (error) {
     console.error('Error al eliminar canal en API:', error);
   }
@@ -570,7 +582,7 @@ client.on(Events.ChannelUpdate, async (oldChannel, newChannel) => {
 client.on(Events.MessageDelete, async (message) => {
   if (!message.guildId) return;
   try {
-    await axios.patch(`${config.apiUrl}/api/channels/messages/${message.id}/delete`);
+    await axios.patch(`${config.apiUrl}/api/bot/channels/messages/${message.id}/delete`);
   } catch (error) {
     console.error('Error al marcar mensaje eliminado en API:', error);
   }
@@ -579,7 +591,7 @@ client.on(Events.MessageDelete, async (message) => {
 client.on(Events.MessageUpdate, async (_oldMsg, newMsg) => {
   if (!newMsg.guildId || newMsg.content == null) return;
   try {
-    await axios.patch(`${config.apiUrl}/api/channels/messages/${newMsg.id}`, {
+    await axios.patch(`${config.apiUrl}/api/bot/channels/messages/${newMsg.id}`, {
       content: newMsg.content,
     });
   } catch (error) {
@@ -936,6 +948,8 @@ botHttpServer.patch('/edit-embed', async (req, res) => {
 botHttpServer.post('/create-channel', async (req, res) => {
   const { name, type, topic, parentId } = req.body;
 
+  console.log('[CREATE-CHANNEL] Datos recibidos:', { name, type, topic, parentId });
+
   if (!name || typeof name !== 'string') {
     return res.status(400).json({ error: 'name es requerido' });
   }
@@ -947,18 +961,36 @@ botHttpServer.post('/create-channel', async (req, res) => {
 
   try {
     const channelType = parseChannelTypeInput(type);
-    const created = await guild.channels.create({
+    const createOptions: any = {
       name: name.trim(),
       type: channelType as
         | ChannelType.GuildText
         | ChannelType.GuildForum
         | ChannelType.GuildCategory,
-      topic: topic && typeof topic === 'string' ? topic : undefined,
-      parent: parentId && typeof parentId === 'string' ? parentId : undefined,
+    };
+    
+    if (topic && typeof topic === 'string') {
+      createOptions.topic = topic;
+    }
+    
+    if (parentId && typeof parentId === 'string') {
+      createOptions.parent = parentId;
+      console.log('[CREATE-CHANNEL] Asignando categoría:', parentId);
+    }
+    
+    console.log('[CREATE-CHANNEL] Opciones de creación:', createOptions);
+    const created = await guild.channels.create(createOptions);
+    
+    console.log('[CREATE-CHANNEL] Canal creado:', {
+      id: created.id,
+      name: created.name,
+      parentId: created.parentId,
+      type: created.type
     });
+    
     res.json({ success: true, discord_channel_id: created.id });
   } catch (error) {
-    console.error('Error en create-channel:', error);
+    console.error('[CREATE-CHANNEL] Error:', error);
     res.status(500).json({
       error: 'Error al crear canal',
       message: error instanceof Error ? error.message : 'Error desconocido',
@@ -1106,6 +1138,32 @@ botHttpServer.get('/check-channel/:channelId', async (req, res) => {
     console.error('Error checking channel:', error);
     res.status(500).json({
       error: 'Error checking channel',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+botHttpServer.get('/categories', async (req, res) => {
+  try {
+    const guild = client.guilds.cache.first();
+    if (!guild) {
+      return res.status(500).json({ error: 'No hay servidor disponible' });
+    }
+
+    const categories = guild.channels.cache
+      .filter(ch => ch.type === ChannelType.GuildCategory)
+      .map(ch => ({
+        id: ch.id,
+        name: ch.name,
+        position: 'position' in ch ? ch.position : 0
+      }))
+      .sort((a, b) => a.position - b.position);
+
+    res.json(categories);
+  } catch (error) {
+    console.error('Error getting categories:', error);
+    res.status(500).json({
+      error: 'Error getting categories',
       message: error instanceof Error ? error.message : 'Unknown error'
     });
   }

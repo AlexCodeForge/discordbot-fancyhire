@@ -11,8 +11,8 @@ function isDiscordSnowflake(value: string): boolean {
 
 router.get('/', async (req, res, next) => {
   try {
-    const channels = await ChannelModel.getAll();
-    Logger.info('Canales listados', { count: channels.length }, req);
+    const channels = await ChannelModel.getAllWithTicketInfo();
+    Logger.info('Canales listados con info de tickets', { count: channels.length }, req);
     res.json(channels);
   } catch (error) {
     next(error);
@@ -89,20 +89,23 @@ router.delete('/:discordChannelId', async (req, res, next) => {
 
 router.post('/create', async (req, res, next) => {
   try {
-    const { name, type, topic, parentId } = req.body;
+    const { name, type, topic, parentId, parent_id } = req.body;
 
     if (!name) {
       return res.status(400).json({ error: 'name es requerido' });
     }
 
+    // Aceptar tanto parentId como parent_id
+    const categoryId = parentId || parent_id;
+
     const discord_channel_id = await ChannelService.createChannel(
       name,
       type,
       topic,
-      parentId
+      categoryId
     );
 
-    Logger.info('Canal creado vía API', { name, discord_channel_id }, req);
+    Logger.info('Canal creado vía API', { name, discord_channel_id, parentId: categoryId }, req);
     res.json({ discord_channel_id });
   } catch (error) {
     next(error);

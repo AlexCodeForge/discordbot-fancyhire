@@ -117,7 +117,7 @@ export class TicketChannelService {
 
       const welcomeMessage = await MessageTemplateService.getMessageWithFallback('ticket_open', {
         leadName,
-        leadId
+        leadDiscordId
       });
       await channel.send(welcomeMessage);
 

@@ -93,6 +93,31 @@ export class TicketModel {
     return result.rows[0] || null;
   }
 
+  static async updateStatusByChannelId(
+    channelId: string,
+    status: 'open' | 'closed' | 'archived'
+  ): Promise<Ticket | null> {
+    try {
+      const result = await pool.query(
+        `UPDATE tickets SET status = $1 WHERE discord_channel_id = $2 RETURNING *`,
+        [status, channelId]
+      );
+
+      if (result.rows[0]) {
+        Logger.info('Ticket status updated by channel ID', { 
+          ticketId: result.rows[0].id, 
+          channelId, 
+          status 
+        });
+      }
+
+      return result.rows[0] || null;
+    } catch (error) {
+      Logger.error('Error updating ticket status by channel ID', { channelId }, error as Error);
+      throw error;
+    }
+  }
+
   static async close(
     id: number,
     closedBy: string,
