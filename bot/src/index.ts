@@ -109,17 +109,25 @@ const syncMembersToDatabase = async () => {
 
 const syncDMChannel = async (channel: DMChannel, discordId: string): Promise<number> => {
   try {
-    console.log(`Sincronizando mensajes del DM con ${discordId}...`);
+    console.log(`[DM-SYNC] Iniciando sincronización del DM con ${discordId}...`);
     
     const messages = await channel.messages.fetch({ limit: 100 });
+    console.log(`[DM-SYNC] Encontrados ${messages.size} mensajes en el canal`);
+    
     const sortedMessages = Array.from(messages.values()).sort((a, b) => 
       a.createdTimestamp - b.createdTimestamp
     );
     
     let syncedCount = 0;
+    let skippedCount = 0;
     
     for (const msg of sortedMessages) {
-      if (msg.author.bot) continue;
+      console.log(`[DM-SYNC] Procesando mensaje ${msg.id} - Author: ${msg.author.tag} (ID: ${msg.author.id}) Bot: ${msg.author.bot}`);
+      
+      if (msg.author.bot) {
+        console.log(`[DM-SYNC] Saltando mensaje ${msg.id} (es del bot)`);
+        continue;
+      }
       
       try {
         const existsResponse = await axios.get(
@@ -127,6 +135,7 @@ const syncDMChannel = async (channel: DMChannel, discordId: string): Promise<num
         );
         
         if (!existsResponse.data.exists) {
+          console.log(`[DM-SYNC] Sincronizando mensaje ${msg.id}: "${msg.content.substring(0, 30)}..."`);
           await axios.post(`${config.apiUrl}/api/messages/incoming`, {
             discord_id: discordId,
             content: msg.content,
@@ -134,19 +143,19 @@ const syncDMChannel = async (channel: DMChannel, discordId: string): Promise<num
             sender_name: msg.author.tag
           });
           syncedCount++;
+        } else {
+          skippedCount++;
         }
       } catch (error) {
-        console.error(`Error sincronizando mensaje ${msg.id}:`, error);
+        console.error(`[DM-SYNC] Error sincronizando mensaje ${msg.id}:`, error);
       }
     }
     
-    if (syncedCount > 0) {
-      console.log(`✓ Sincronizados ${syncedCount} mensajes de ${discordId}`);
-    }
+    console.log(`[DM-SYNC] Completado para ${discordId}: ${syncedCount} nuevos, ${skippedCount} existentes, ${messages.size} total`);
     
     return syncedCount;
   } catch (error) {
-    console.error(`Error al sincronizar DM con ${discordId}:`, error);
+    console.error(`[DM-SYNC] Error al sincronizar DM con ${discordId}:`, error);
     return 0;
   }
 };
@@ -1635,6 +1644,43 @@ botHttpServer.post('/force-sync-threads', async (req, res) => {
     console.error('Error en sincronización forzada:', error);
     res.status(500).json({
       error: 'Error en sincronización',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+botHttpServer.post('/force-sync-dms', async (req, res) => {
+  try {
+    console.log('[DM] Sincronización forzada de DMs iniciada...');
+    await syncAllDMs();
+    res.json({ success: true, message: 'Sincronización de DMs completada' });
+  } catch (error) {
+    console.error('Error en sincronización forzada de DMs:', error);
+    res.status(500).json({
+      error: 'Error en sincronización de DMs',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+botHttpServer.post('/sync-dm-user/:discordId', async (req, res) => {
+  try {
+    const { discordId } = req.params;
+    console.log(`[DM] Sincronizando DMs para usuario ${discordId}...`);
+    
+    const user = await client.users.fetch(discordId);
+    const dmChannel = user.dmChannel || await user.createDM();
+    const synced = await syncDMChannel(dmChannel, discordId);
+    
+    res.json({ 
+      success: true, 
+      message: `Sincronizados ${synced} mensajes para ${user.tag}`,
+      syncedCount: synced
+    });
+  } catch (error) {
+    console.error('Error sincronizando DM de usuario:', error);
+    res.status(500).json({
+      error: 'Error sincronizando DM',
       message: error instanceof Error ? error.message : 'Unknown error'
     });
   }

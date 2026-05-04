@@ -3,10 +3,12 @@ import { Channel } from '../types/Channel';
 import { ChannelMessage, CreateChannelData } from '../types/ChannelMessage';
 import { Lead, LeadHistory } from '../types/Lead';
 import { ForumThread, ThreadMessage } from '../types/ForumThread';
+import { Conversation, ConversationFilters } from '../types/Conversation';
 
 const API_BASE = import.meta.env.DEV ? '' : '';
 const API_URL = `${API_BASE}/api/leads`;
 const MESSAGES_URL = `${API_BASE}/api/messages`;
+const CONVERSATIONS_URL = `${API_BASE}/api/conversations`;
 const CHANNELS_URL = `${API_BASE}/api/channels`;
 const DISCORD_URL = `${API_BASE}/api/discord`;
 const TICKETS_URL = `${API_BASE}/api/tickets`;
@@ -99,6 +101,20 @@ export const api = {
   async getUnreadCount(leadId: number): Promise<number> {
     const response = await axios.get(`${MESSAGES_URL}/${leadId}/unread`);
     return response.data.count;
+  },
+
+  async getConversations(filters?: ConversationFilters): Promise<Conversation[]> {
+    const params = new URLSearchParams();
+    
+    if (filters?.unread) params.append('unread', 'true');
+    if (filters?.status) params.append('status', filters.status);
+    if (filters?.search) params.append('search', filters.search);
+    if (filters?.sortBy) params.append('sortBy', filters.sortBy);
+    if (filters?.dateFrom) params.append('dateFrom', filters.dateFrom);
+    if (filters?.dateTo) params.append('dateTo', filters.dateTo);
+
+    const response = await axios.get(`${CONVERSATIONS_URL}?${params.toString()}`);
+    return response.data;
   },
 
   async getChannels(): Promise<Channel[]> {

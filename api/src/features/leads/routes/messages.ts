@@ -3,7 +3,6 @@ import { MessageModel } from '../models/Message';
 import { LeadModel } from '../models/Lead';
 import { BotService } from '../../discord/services/botService';
 import { Logger } from '../../../shared/utils/Logger';
-import { authMiddleware } from '../../auth/middleware/auth';
 
 const router = Router();
 
@@ -52,7 +51,7 @@ router.post('/incoming', async (req, res, next) => {
   }
 });
 
-router.get('/:leadId', authMiddleware, async (req, res, next) => {
+router.get('/:leadId', async (req, res, next) => {
   try {
     const leadId = parseInt(req.params.leadId);
     const limit = req.query.limit ? parseInt(req.query.limit as string) : 100;
@@ -64,7 +63,7 @@ router.get('/:leadId', authMiddleware, async (req, res, next) => {
   }
 });
 
-router.post('/:leadId/send', authMiddleware, async (req, res, next) => {
+router.post('/:leadId/send', async (req, res, next) => {
   try {
     const leadId = parseInt(req.params.leadId);
     const { content, sender_name } = req.body;
@@ -122,7 +121,7 @@ router.post('/:leadId/send', authMiddleware, async (req, res, next) => {
   }
 });
 
-router.get('/:leadId/unread', authMiddleware, async (req, res, next) => {
+router.get('/:leadId/unread', async (req, res, next) => {
   try {
     const leadId = parseInt(req.params.leadId);
     const count = await MessageModel.getUnreadCount(leadId);
@@ -132,7 +131,7 @@ router.get('/:leadId/unread', authMiddleware, async (req, res, next) => {
   }
 });
 
-router.patch('/:leadId/mark-read', authMiddleware, async (req, res, next) => {
+router.patch('/:leadId/mark-read', async (req, res, next) => {
   try {
     const leadId = parseInt(req.params.leadId);
     await MessageModel.markAsRead(leadId);

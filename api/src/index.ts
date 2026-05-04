@@ -9,6 +9,7 @@ import systemRouter from './routes/system';
 import discordRouter from './features/discord/routes/discord';
 import botRouter from './features/discord/routes/bot';
 import messagesRouter from './features/leads/routes/messages';
+import conversationsRouter from './features/leads/routes/conversations';
 import channelsRouter from './features/channels/routes/channels';
 import channelMessagesRouter from './features/channels/routes/channelMessages';
 import ticketsRouter from './features/tickets/routes/tickets';
@@ -124,8 +125,12 @@ app.post('/api/tickets/messages/incoming', async (req, res) => {
   }
 });
 
+// Bot webhooks (sin autenticación)
+app.use('/api/messages', messagesRouter);
+
+// Rutas protegidas con autenticación
 app.use('/api/leads', authMiddleware, leadsRouter);
-app.use('/api/messages', authMiddleware, messagesRouter);
+app.use('/api/conversations', authMiddleware, conversationsRouter);
 
 // Webhook del bot para sincronizar canales - sin autenticación
 app.post('/api/bot/channels/sync', async (req, res, next) => {
