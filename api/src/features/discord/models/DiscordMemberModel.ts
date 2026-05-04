@@ -122,4 +122,14 @@ export class DiscordMemberModel {
     const result = await pool.query('DELETE FROM discord_members WHERE id = $1', [id]);
     return result.rowCount !== null && result.rowCount > 0;
   }
+
+  static async getByRole(roleId: string): Promise<DiscordMember[]> {
+    const result = await pool.query(
+      `SELECT * FROM discord_members 
+       WHERE roles::jsonb @> $1::jsonb
+       ORDER BY display_name ASC`,
+      [JSON.stringify([{ id: roleId }])]
+    );
+    return result.rows;
+  }
 }

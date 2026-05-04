@@ -11,6 +11,7 @@ import { RolesPage } from './pages/RolesPage';
 import { Announcements } from './pages/Announcements';
 import { AutoMessages } from './pages/AutoMessages';
 import { ConversationsPage } from './pages/ConversationsPage';
+import Settings from './pages/Settings';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import './index.css';
@@ -112,6 +113,14 @@ function AppRouter() {
         element={
           <ProtectedRoute>
             <ConversationsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/settings"
+        element={
+          <ProtectedRoute>
+            <Settings />
           </ProtectedRoute>
         }
       />

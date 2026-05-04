@@ -7,6 +7,7 @@ import { TicketChatModal } from '../tickets/modals/TicketChatModal';
 import { ConfirmationModal } from '../ui/modals/ConfirmationModal';
 import { ErrorModal } from '../ui/modals/ErrorModal';
 import { SuccessModal } from '../ui/modals/SuccessModal';
+import { StaffSelector } from '../ui/StaffSelector';
 
 interface LeadModalProps {
   lead: Lead;
@@ -294,11 +295,11 @@ export function LeadModal({ lead, onClose, onUpdate }: LeadModalProps) {
               <label className="bmw-label block mb-1">
                 Asignado a
               </label>
-              <input
-                type="text"
-                value={editedLead.assigned_to || ''}
-                onChange={(e) => setEditedLead({ ...editedLead, assigned_to: e.target.value })}
-                className="bmw-input w-full"
+              <StaffSelector
+                value={editedLead.assigned_to}
+                onChange={(value) => setEditedLead({ ...editedLead, assigned_to: value || undefined })}
+                placeholder="Seleccionar staff..."
+                allowClear={true}
               />
             </div>
 

@@ -16,6 +16,8 @@ import ticketsRouter from './features/tickets/routes/tickets';
 import announcementsRouter from './features/announcements/routes/announcements';
 import forumRouter from './features/forums/routes/forum';
 import autoMessagesRouter from './features/autoMessages/routes/autoMessages';
+import settingsRouter from './features/settings/routes/settings';
+import staffRouter from './features/staff/routes/staff';
 import { errorHandler } from './shared/middleware/errorHandler';
 import { authMiddleware } from './features/auth/middleware/auth';
 
@@ -320,6 +322,8 @@ app.use('/api/discord', authMiddleware, discordRouter);
 app.use('/api/tickets', authMiddleware, ticketsRouter);
 app.use('/api/announcements', authMiddleware, announcementsRouter);
 app.use('/api/auto-messages', authMiddleware, autoMessagesRouter);
+app.use('/api/settings', authMiddleware, settingsRouter);
+app.use('/api/staff', authMiddleware, staffRouter);
 
 app.use(errorHandler);
 

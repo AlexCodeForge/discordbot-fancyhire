@@ -131,6 +131,33 @@ export const api = {
     return response.data;
   },
 
+  async getDiscordRoles(): Promise<Array<{ id: string; name: string; color: string }>> {
+    try {
+      const response = await axios.get(`${DISCORD_URL}/roles`);
+      return response.data;
+    } catch (err) {
+      handleApiError(err, 'getDiscordRoles');
+    }
+  },
+
+  async getDiscordGuilds(): Promise<any[]> {
+    try {
+      const response = await axios.get(`${DISCORD_URL}/guilds`);
+      return response.data;
+    } catch (err) {
+      handleApiError(err, 'getDiscordGuilds');
+    }
+  },
+
+  async getGuildRoles(guildId: string): Promise<Array<{ id: string; name: string; color: number }>> {
+    try {
+      const response = await axios.get(`${DISCORD_URL}/guilds/${guildId}/roles`);
+      return response.data;
+    } catch (err) {
+      handleApiError(err, 'getGuildRoles');
+    }
+  },
+
   async createChannel(data: CreateChannelData): Promise<{ discord_channel_id: string }> {
     try {
       const body: {

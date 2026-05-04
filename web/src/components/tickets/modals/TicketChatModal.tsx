@@ -3,6 +3,7 @@ import { api } from '../../../services/api';
 import { ConfirmationModal } from '../../ui/modals/ConfirmationModal';
 import { SuccessModal } from '../../ui/modals/SuccessModal';
 import { ErrorModal } from '../../ui/modals/ErrorModal';
+import { StaffSelector } from '../../ui/StaffSelector';
 
 interface TicketChatModalProps {
   ticket: any;
@@ -40,10 +41,14 @@ export function TicketChatModal({ ticket, onClose, onTicketUpdated }: TicketChat
   const [newMessage, setNewMessage] = useState('');
   const [sending, setSending] = useState(false);
   const [channelExists, setChannelExists] = useState(true);
+  const [lead, setLead] = useState<any>(null);
+  const [assignedStaff, setAssignedStaff] = useState<string | null>(null);
+  const [transferring, setTransferring] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     loadMessages();
+    loadLead();
     const interval = setInterval(loadMessages, 3000);
     return () => clearInterval(interval);
   }, [ticket.id]);
@@ -71,6 +76,18 @@ export function TicketChatModal({ ticket, onClose, onTicketUpdated }: TicketChat
       console.error('Error cargando mensajes:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadLead = async () => {
+    try {
+      if (ticket.lead_id) {
+        const leadData = await api.getLeadById(ticket.lead_id);
+        setLead(leadData);
+        setAssignedStaff(leadData.assigned_to || null);
+      }
+    } catch (error) {
+      console.error('Error cargando lead:', error);
     }
   };
 
@@ -218,6 +235,36 @@ export function TicketChatModal({ ticket, onClose, onTicketUpdated }: TicketChat
     }
   };
 
+  const handleTransferStaff = async (newStaffId: string | null) => {
+    if (!lead || transferring) return;
+
+    setTransferring(true);
+    try {
+      const oldUserId = lead.assigned_to;
+      await api.transferTicket(ticket.id, newStaffId, oldUserId);
+      
+      await api.updateLead(lead.id, { assigned_to: newStaffId || undefined });
+      
+      setAssignedStaff(newStaffId);
+      setSuccessData({
+        title: 'Staff Transferido',
+        message: 'El ticket ha sido transferido exitosamente al nuevo miembro del staff.',
+      });
+      setShowSuccessModal(true);
+      
+      await loadLead();
+    } catch (error: any) {
+      console.error('Error transfiriendo staff:', error);
+      setErrorData({
+        title: 'Error al Transferir',
+        message: error.message || 'No se pudo transferir el ticket. Por favor, intenta nuevamente.'
+      });
+      setShowErrorModal(true);
+    } finally {
+      setTransferring(false);
+    }
+  };
+
   const getStatusLabel = (status: string) => {
     switch (status) {
       case 'open':
@@ -327,6 +374,21 @@ export function TicketChatModal({ ticket, onClose, onTicketUpdated }: TicketChat
                   Notas de resolución
                 </p>
                 <p className="bmw-body-sm">{ticket.resolution_notes}</p>
+              </div>
+            )}
+            
+            {ticket.status === 'open' && lead && (
+              <div className="mt-4 pt-4" style={{ borderTop: '1px solid var(--bmw-hairline)' }}>
+                <p className="bmw-label-uppercase mb-2" style={{ color: 'var(--bmw-muted)' }}>
+                  Asignado a
+                </p>
+                <StaffSelector
+                  value={assignedStaff}
+                  onChange={handleTransferStaff}
+                  placeholder="Seleccionar staff..."
+                  disabled={transferring}
+                  allowClear={true}
+                />
               </div>
             )}
           </div>

@@ -94,10 +94,10 @@ export function LeadCard({ lead, onClick, discordMember = null, isDragOverlay = 
         </div>
 
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div className="flex items-center gap-2 mb-1">
-            <h3 className="bmw-title-sm" style={{ marginBottom: 0 }}>{lead.name}</h3>
+          <div className="flex items-center flex-wrap gap-2 mb-1">
+            <h3 className="bmw-title-sm" style={{ marginBottom: 0, flexShrink: 0 }}>{lead.name}</h3>
             {hasUnreadMessages && (
-              <div className="relative" style={{ animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite' }}>
+              <div className="relative" style={{ animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite', flexShrink: 0 }}>
                 <div style={{
                   width: '20px',
                   height: '20px',
@@ -121,7 +121,9 @@ export function LeadCard({ lead, onClick, discordMember = null, isDragOverlay = 
                 backgroundColor: 'var(--bmw-surface-strong)',
                 color: 'var(--bmw-ink)',
                 padding: '2px 6px',
-                borderRadius: '0'
+                borderRadius: '0',
+                flexShrink: 0,
+                whiteSpace: 'nowrap'
               }}>AUTO</span>
             )}
             {lead.has_open_ticket && (
@@ -131,7 +133,9 @@ export function LeadCard({ lead, onClick, discordMember = null, isDragOverlay = 
                 backgroundColor: 'var(--bmw-primary)',
                 color: 'var(--bmw-on-primary)',
                 padding: '2px 6px',
-                borderRadius: '0'
+                borderRadius: '0',
+                flexShrink: 0,
+                whiteSpace: 'nowrap'
               }}>TICKET</span>
             )}
           </div>
