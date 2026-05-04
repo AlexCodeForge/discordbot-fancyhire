@@ -61,11 +61,9 @@ export function TicketMetrics() {
       setMetrics(metricsData);
       setLeads(leadsData.filter((l: any) => l.discord_id));
       
-      const allTickets: Ticket[] = [];
-      for (const lead of leadsData) {
-        try {
-          const leadTickets = await api.getTickets(lead.id);
-          allTickets.push(...leadTickets.map((t: any) => ({
+      const ticketPromises = leadsData.map(lead => 
+        api.getTickets(lead.id)
+          .then(leadTickets => leadTickets.map((t: any) => ({
             ...t,
             lead: {
               id: lead.id,
@@ -73,11 +71,15 @@ export function TicketMetrics() {
               discord_tag: lead.discord_tag,
               stage: lead.stage
             }
-          })));
-        } catch (err) {
-          console.error(`Error loading tickets for lead ${lead.id}:`, err);
-        }
-      }
+          })))
+          .catch(err => {
+            console.error(`Error loading tickets for lead ${lead.id}:`, err);
+            return [];
+          })
+      );
+      
+      const ticketArrays = await Promise.all(ticketPromises);
+      const allTickets = ticketArrays.flat();
       const sortedTickets = allTickets.sort((a, b) => 
         new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
       );
