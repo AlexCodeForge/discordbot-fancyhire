@@ -15,6 +15,7 @@ export interface Lead {
   created_at: Date;
   updated_at: Date;
   unread_count?: number;
+  has_open_ticket?: boolean;
 }
 
 export interface LeadHistory {
@@ -39,7 +40,13 @@ export class LeadModel {
            AND m.sender_type = 'user' 
            AND m.read_at IS NULL),
           0
-        ) as unread_count
+        ) as unread_count,
+        EXISTS(
+          SELECT 1 
+          FROM tickets t 
+          WHERE t.lead_id = l.id 
+          AND t.status = 'open'
+        ) as has_open_ticket
       FROM leads l 
       ORDER BY l.stage, l.display_order ASC
     `);

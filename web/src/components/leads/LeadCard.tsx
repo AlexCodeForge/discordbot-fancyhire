@@ -124,6 +124,16 @@ export function LeadCard({ lead, onClick, discordMember = null, isDragOverlay = 
                 borderRadius: '0'
               }}>AUTO</span>
             )}
+            {lead.has_open_ticket && (
+              <span className="bmw-body-sm" style={{ 
+                fontSize: '10px',
+                fontWeight: 700,
+                backgroundColor: 'var(--bmw-primary)',
+                color: 'var(--bmw-on-primary)',
+                padding: '2px 6px',
+                borderRadius: '0'
+              }}>TICKET</span>
+            )}
           </div>
           
           <div className="bmw-body-sm" style={{ color: 'var(--bmw-muted)', fontSize: '12px', marginBottom: '4px' }}>

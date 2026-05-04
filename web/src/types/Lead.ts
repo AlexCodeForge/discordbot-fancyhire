@@ -15,6 +15,7 @@ export interface Lead {
   created_at: string;
   updated_at: string;
   unread_count?: number;
+  has_open_ticket?: boolean;
 }
 
 export interface LeadHistory {
